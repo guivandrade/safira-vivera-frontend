@@ -283,11 +283,44 @@ export function CreativesPage() {
   );
 }
 
+/**
+ * URLs do CDN do Meta (`scontent.*.fbcdn.net`, `lookaside.fbsbx.com`, etc)
+ * apontam pro arquivo de imagem/vídeo cru, NÃO pro post. Se o backend
+ * popular `previewUrl` com esse tipo de URL (workaround ou bug), não
+ * queremos abrir porque a UX é péssima — usuário clica esperando ver
+ * o post e vê uma imagem nua em aba nova.
+ */
+function isLikelyPostPermalink(url: string | null): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    // Rejeita CDNs conhecidos do Meta
+    if (host.includes('fbcdn.net') || host.includes('fbsbx.com') || host.includes('cdninstagram.com')) {
+      return false;
+    }
+    // Aceita hosts de post conhecidos
+    if (
+      host === 'instagram.com' ||
+      host.endsWith('.instagram.com') ||
+      host === 'facebook.com' ||
+      host.endsWith('.facebook.com') ||
+      host === 'fb.com' ||
+      host.endsWith('.fb.com')
+    ) {
+      return true;
+    }
+    // Desconhecido: melhor não linkar do que levar pra lugar errado
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function CreativeGalleryCard({ row, rank }: { row: CreativeRow; rank: number }) {
-  // previewUrl vem do backend (ex: link permanente do post no Instagram ou
-  // preview do Ads Manager). Se existir, o card inteiro vira um link
-  // externo — Vera consegue ver o post exatamente como está no Instagram.
-  const hasLink = !!row.previewUrl;
+  // Só trata como "link pro post" se previewUrl parecer um permalink real
+  // (instagram.com/p/..., facebook.com/..., etc). CDN URLs são ignoradas.
+  const hasLink = isLikelyPostPermalink(row.previewUrl);
 
   const inner = (
     <Card
