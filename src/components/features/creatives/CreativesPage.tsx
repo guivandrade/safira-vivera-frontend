@@ -179,7 +179,7 @@ export function CreativesPage() {
             key: 'spend',
             label: 'Investimento',
             tooltip: 'Investimento total no período.',
-            formatted: formatCurrency(totals.spend, 0),
+            formatted: formatCurrency(totals.spend),
             delta: null,
           }}
         />
