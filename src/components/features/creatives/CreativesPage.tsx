@@ -20,8 +20,26 @@ export function CreativesPage() {
   const [mode, setMode] = useState<'gallery' | 'table'>('gallery');
   const { data, isLoading, error } = useCreatives();
 
-  const rows = data?.creatives ?? [];
-  const totals = data?.totals ?? { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
+  // Página é Meta Ads puro. Se o backend retornar `provider: 'google'` (text
+  // ads de Search), filtramos aqui — Google tem sua própria página
+  // (/palavras-chave) e mistura confundiria a leitura.
+  const rows = useMemo(
+    () => (data?.creatives ?? []).filter((c) => c.provider === 'meta'),
+    [data?.creatives],
+  );
+
+  // Totais precisam ser recalculados dos `rows` filtrados, não reutilizar
+  // `data.totals` (que inclui Google).
+  const totals = useMemo(
+    () => ({
+      impressions: rows.reduce((s, c) => s + c.impressions, 0),
+      clicks: rows.reduce((s, c) => s + c.clicks, 0),
+      conversions: rows.reduce((s, c) => s + c.conversions, 0),
+      spend: rows.reduce((s, c) => s + c.spend, 0),
+    }),
+    [rows],
+  );
+
   const hasData = rows.length > 0;
 
   const sortedByPerformance = useMemo(
