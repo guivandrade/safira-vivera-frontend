@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useCampaignInsights } from '@/hooks/use-campaign-insights';
 import { useGoogleAdsStatus } from '@/hooks/use-integration-status';
 import { useFiltersStore } from '@/stores/filters-store';
+import { useToast } from '@/providers/toast-provider';
 import { apiClient } from '@/lib/api-client';
-import { CampaignSummary } from '@/types/campaigns';
+import { CampaignSummary, MonthlyData } from '@/types/campaigns';
+import { formatMonthShort } from '@/lib/formatters';
 import { ChartsSkeleton, KpiCardsSkeleton, TableSkeleton } from './CampaignsSkeleton';
 import { SpendChart } from './SpendChart';
 import { ConversionsChart } from './ConversionsChart';
@@ -18,33 +20,42 @@ import { Button } from '@/components/ui/Button';
 export function CampaignsDashboard() {
   const { data, isLoading, error, refetch, isFetching } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
+  const monthFilter = useFiltersStore((s) => s.monthFilter);
+  const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
   const { data: googleStatus } = useGoogleAdsStatus();
   const searchParams = useSearchParams();
-  const [showSuccess, setShowSuccess] = useState(false);
+  const toast = useToast();
   const [isConnecting, setIsConnecting] = useState(false);
-  const [connectError, setConnectError] = useState<string | null>(null);
   const [activeCampaign, setActiveCampaign] = useState<CampaignSummary | null>(null);
 
   useEffect(() => {
     const success = searchParams.get('success');
+    const errorParam = searchParams.get('error');
     if (success === 'google_connected') {
-      setShowSuccess(true);
+      toast.success('Google Ads conectado. Atualizando dados...', { title: 'Conectado' });
       refetch();
-      const t = setTimeout(() => setShowSuccess(false), 5000);
-      return () => clearTimeout(t);
+    } else if (errorParam === 'missing_refresh_token') {
+      toast.error(
+        'Revogue o acesso em myaccount.google.com/permissions e tente conectar novamente.',
+        { title: 'Conexão incompleta', duration: 8000 },
+      );
+    } else if (errorParam === 'oauth_denied') {
+      toast.warning('Você cancelou a autorização no Google.', { title: 'Conexão cancelada' });
+    } else if (errorParam) {
+      toast.error(`Erro na conexão: ${errorParam}`, { title: 'Erro' });
     }
-  }, [searchParams, refetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
-    setConnectError(null);
     try {
       const response = await apiClient.get<{ authUrl: string }>(
         '/integrations/google-ads/oauth/authorize',
       );
       window.location.href = response.data.authUrl;
     } catch (err: any) {
-      setConnectError(err?.response?.data?.message || 'Erro ao iniciar conexão com Google Ads');
+      toast.error(err?.response?.data?.message || 'Erro ao iniciar conexão com Google Ads');
       setIsConnecting(false);
     }
   };
@@ -60,6 +71,21 @@ export function CampaignsDashboard() {
       { google: 0, meta: 0 },
     );
   }, [data]);
+
+  // Aplica drill-down: se há monthFilter, filtra monthlyData e a lista
+  // de campanhas é filtrada por aproximação (mantemos todas, já que
+  // `campaigns[]` não tem mês associado — drill-down só afeta charts + KPIs).
+  const filteredMonthly: MonthlyData[] = useMemo(() => {
+    if (!data) return [];
+    if (!monthFilter) return data.monthlyData;
+    return data.monthlyData.filter((m) => m.month === monthFilter);
+  }, [data, monthFilter]);
+
+  const filteredResponse = useMemo(() => {
+    if (!data) return null;
+    if (!monthFilter) return data;
+    return { ...data, monthlyData: filteredMonthly };
+  }, [data, monthFilter, filteredMonthly]);
 
   const hasAnyData = !!data && data.monthlyData.length > 0;
   const googleConnected = !!googleStatus?.connected;
@@ -92,15 +118,18 @@ export function CampaignsDashboard() {
         </Button>
       </div>
 
-      {/* Flash messages */}
-      {showSuccess && (
-        <div className="rounded-md border border-success/30 bg-success/5 px-4 py-2.5 text-sm text-success">
-          ● Google Ads conectado. Atualizando dados...
-        </div>
-      )}
-      {connectError && (
-        <div className="rounded-md border border-danger/30 bg-danger/5 px-4 py-2.5 text-sm text-danger">
-          {connectError}
+      {monthFilter && (
+        <div className="inline-flex items-center gap-2 rounded-md border border-accent/30 bg-accent/5 px-3 py-1.5 text-xs">
+          <span className="text-ink-muted">Mês:</span>
+          <span className="font-medium text-ink">{formatMonthShort(monthFilter)}</span>
+          <button
+            type="button"
+            onClick={() => setMonthFilter(null)}
+            aria-label="Limpar filtro de mês"
+            className="text-ink-muted hover:text-ink"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -135,7 +164,11 @@ export function CampaignsDashboard() {
       )}
       {!isLoading && !error && showMetaEmpty && <EmptyStateCTA variant="connect-meta" />}
 
-      {isLoading ? <KpiCardsSkeleton /> : data && hasAnyData && <KpiCards data={data} platformFilter={platform} />}
+      {isLoading ? (
+        <KpiCardsSkeleton />
+      ) : (
+        filteredResponse && hasAnyData && <KpiCards data={filteredResponse} platformFilter={platform} />
+      )}
 
       {isLoading ? (
         <ChartsSkeleton />
@@ -143,8 +176,16 @@ export function CampaignsDashboard() {
         data &&
         hasAnyData && (
           <div className="grid gap-4 lg:grid-cols-2">
-            <SpendChart data={data.monthlyData} platformFilter={platform} />
-            <ConversionsChart data={data.monthlyData} platformFilter={platform} />
+            <SpendChart
+              data={data.monthlyData}
+              platformFilter={platform}
+              onBarClick={setMonthFilter}
+            />
+            <ConversionsChart
+              data={data.monthlyData}
+              platformFilter={platform}
+              onBarClick={setMonthFilter}
+            />
           </div>
         )
       )}
@@ -152,9 +193,9 @@ export function CampaignsDashboard() {
       {isLoading ? (
         <TableSkeleton />
       ) : (
-        data &&
+        filteredResponse &&
         hasAnyData && (
-          <DetailedCampaignsTable data={data} onRowClick={setActiveCampaign} />
+          <DetailedCampaignsTable data={filteredResponse} onRowClick={setActiveCampaign} />
         )
       )}
 

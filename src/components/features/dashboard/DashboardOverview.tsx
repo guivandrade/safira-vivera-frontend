@@ -16,10 +16,13 @@ import {
   TableSkeleton,
 } from '@/components/features/campaigns/CampaignsSkeleton';
 import { EmptyStateCTA } from '@/components/features/campaigns/EmptyStateCTA';
+import { InsightsFeed } from './InsightsFeed';
+import { WeekdayHeatmap } from './WeekdayHeatmap';
 
 export function DashboardOverview() {
   const { data, isLoading, error } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
+  const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
 
   const { funnelStages, hasAnyData } = useMemo(() => {
     if (!data) return { funnelStages: [], hasAnyData: false };
@@ -51,6 +54,12 @@ export function DashboardOverview() {
     return [...filtered].sort((a, b) => b.spend - a.spend).slice(0, 5);
   }, [data, platform]);
 
+  const handleBarClick = (monthIso: string) => {
+    setMonthFilter(monthIso);
+    // Navega até /campanhas para Vera ver detalhes do mês
+    window.location.href = '/campanhas';
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -66,6 +75,8 @@ export function DashboardOverview() {
         </div>
       )}
 
+      {data && hasAnyData && <InsightsFeed data={data} />}
+
       {isLoading ? <KpiCardsSkeleton /> : data && hasAnyData && <KpiCards data={data} platformFilter={platform} />}
 
       {isLoading ? (
@@ -73,8 +84,16 @@ export function DashboardOverview() {
       ) : (
         data && hasAnyData && (
           <div className="grid gap-4 lg:grid-cols-2">
-            <SpendChart data={data.monthlyData} platformFilter={platform} />
-            <ConversionsChart data={data.monthlyData} platformFilter={platform} />
+            <SpendChart
+              data={data.monthlyData}
+              platformFilter={platform}
+              onBarClick={handleBarClick}
+            />
+            <ConversionsChart
+              data={data.monthlyData}
+              platformFilter={platform}
+              onBarClick={handleBarClick}
+            />
           </div>
         )
       )}
@@ -108,6 +127,8 @@ export function DashboardOverview() {
           </div>
         </div>
       )}
+
+      {data && hasAnyData && <WeekdayHeatmap />}
 
       {isLoading ? (
         <TableSkeleton />

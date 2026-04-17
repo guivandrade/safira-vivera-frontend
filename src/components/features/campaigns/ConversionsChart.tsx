@@ -16,6 +16,7 @@ import { formatMonthShort, formatNumber } from '@/lib/formatters';
 interface ConversionsChartProps {
   data: MonthlyData[];
   platformFilter?: 'all' | 'meta' | 'google';
+  onBarClick?: (monthIso: string) => void;
 }
 
 const META_COLOR = '#1877F2';
@@ -24,14 +25,16 @@ const TOTAL_COLOR = '#6366f1';
 
 interface Row {
   month: string;
+  monthIso: string;
   Total: number;
   Meta: number;
   Google: number;
 }
 
-export function ConversionsChart({ data, platformFilter = 'all' }: ConversionsChartProps) {
+export function ConversionsChart({ data, platformFilter = 'all', onBarClick }: ConversionsChartProps) {
   const chartData: Row[] = data.map((item) => ({
     month: formatMonthShort(item.month),
+    monthIso: item.month,
     Meta: item.meta.conversions,
     Google: item.google.conversions,
     Total:
@@ -50,9 +53,18 @@ export function ConversionsChart({ data, platformFilter = 'all' }: ConversionsCh
       ? 'Mês a mês — soma Meta + Google'
       : `Mês a mês — ${platformFilter === 'meta' ? 'Meta Ads' : 'Google Ads'}`;
 
+  const handleBarClick = (payload: any) => {
+    if (onBarClick && payload?.monthIso) {
+      onBarClick(payload.monthIso);
+    }
+  };
+
   return (
     <Card padding="md">
-      <CardHeader title="Conversões" description={description} />
+      <CardHeader
+        title="Conversões"
+        description={onBarClick ? `${description} · clique numa barra pra filtrar` : description}
+      />
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
@@ -71,7 +83,13 @@ export function ConversionsChart({ data, platformFilter = 'all' }: ConversionsCh
             cursor={{ fill: 'var(--surface-subtle)' }}
             content={<BreakdownTooltip platformFilter={platformFilter} format={formatNumber} />}
           />
-          <Bar dataKey="Total" fill={color} radius={[3, 3, 0, 0]} />
+          <Bar
+            dataKey="Total"
+            fill={color}
+            radius={[3, 3, 0, 0]}
+            onClick={onBarClick ? handleBarClick : undefined}
+            cursor={onBarClick ? 'pointer' : 'default'}
+          />
         </BarChart>
       </ResponsiveContainer>
     </Card>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { QueryClientProviderWrapper } from '@/providers/query-client-provider';
 import { ThemeProvider, themeInitScript } from '@/providers/theme-provider';
+import { ToastProvider } from '@/providers/toast-provider';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -21,7 +22,9 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <QueryClientProviderWrapper>{children}</QueryClientProviderWrapper>
+          <QueryClientProviderWrapper>
+            <ToastProvider>{children}</ToastProvider>
+          </QueryClientProviderWrapper>
         </ThemeProvider>
       </body>
     </html>
