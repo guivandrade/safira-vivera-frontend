@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import { CampaignSummary } from '@/types/campaigns';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
-import { StatusDot } from '@/components/ui/StatusDot';
+import { StatusDot, statusToVariant } from '@/components/ui/StatusDot';
 import { CardHeader } from '@/components/ui/Card';
 import { formatCurrency, formatNumber, safeDiv } from '@/lib/formatters';
 import { CsvExportButton } from './CsvExportButton';
@@ -18,9 +18,11 @@ export function TopCampaignsTable({ campaigns, onRowClick }: TopCampaignsTablePr
     {
       key: 'status',
       header: 'Status',
-      render: () => <StatusDot status="active" />,
+      render: (c) => <StatusDot status={statusToVariant(c.status)} />,
       width: '110px',
       hideable: false,
+      sortable: true,
+      sortValue: (c) => c.status ?? 'ACTIVE',
     },
     {
       key: 'provider',

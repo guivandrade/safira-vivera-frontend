@@ -16,6 +16,9 @@ interface GenerateInsightsOptions {
    *  Default false — boosts inflam o CPA e geram falsos-positivos em
    *  "Meta vs Google", "campanha zerada", etc. */
   includeBoosts?: boolean;
+  /** Se true, inclui campanhas pausadas/removidas nos agregados. Default
+   *  false — ver o que está rodando hoje, não histórico. */
+  includeInactive?: boolean;
 }
 
 /**
@@ -35,9 +38,11 @@ export function generateInsights(
 
   // Campanhas filtradas pelo mesmo critério usado nos KPIs — garante que
   // insights e cards mostrem o mesmo "universo" de dados.
-  const campaigns = data.campaigns.filter(
-    (c) => options.includeBoosts || c.objective !== 'boost',
-  );
+  const campaigns = data.campaigns.filter((c) => {
+    if (!options.includeBoosts && c.objective === 'boost') return false;
+    if (!options.includeInactive && c.status && c.status !== 'ACTIVE') return false;
+    return true;
+  });
 
   insights.push(...detectMonthOverMonthSwing(data.monthlyData));
   insights.push(...detectCpaOutliers(campaigns));

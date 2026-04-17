@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { CampaignInsightsResponse, CampaignSummary } from '@/types/campaigns';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
-import { StatusDot } from '@/components/ui/StatusDot';
+import { StatusDot, statusToVariant } from '@/components/ui/StatusDot';
 import { CardHeader } from '@/components/ui/Card';
 import { formatCurrency, formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
 import { CsvExportButton } from './CsvExportButton';
@@ -19,23 +19,27 @@ interface DetailedCampaignsTableProps {
 export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTableProps) {
   const platform = useFiltersStore((s) => s.platform);
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const includeInactive = useFiltersStore((s) => s.includeInactive);
   const toast = useToast();
 
   const filteredCampaigns = useMemo(() => {
     return data.campaigns.filter((c) => {
       if (platform !== 'all' && c.provider !== platform) return false;
       if (!includeBoosts && c.objective === 'boost') return false;
+      if (!includeInactive && c.status && c.status !== 'ACTIVE') return false;
       return true;
     });
-  }, [data.campaigns, platform, includeBoosts]);
+  }, [data.campaigns, platform, includeBoosts, includeInactive]);
 
   const columns: DataTableColumn<CampaignSummary>[] = [
     {
       key: 'status',
       header: 'Status',
-      render: () => <StatusDot status="active" />,
+      render: (c) => <StatusDot status={statusToVariant(c.status)} />,
       width: '100px',
       hideable: false,
+      sortable: true,
+      sortValue: (c) => c.status ?? 'ACTIVE',
     },
     {
       key: 'provider',
@@ -226,7 +230,7 @@ export function CampaignDetailDrawer({ campaign, onClose }: CampaignDetailDrawer
           </button>
         </div>
 
-        <StatusDot status="active" />
+        <StatusDot status={statusToVariant(campaign.status)} />
 
         <dl className="mt-6 grid grid-cols-2 gap-3">
           <StatItem label="Investimento" value={formatCurrency(campaign.spend, 2)} />
