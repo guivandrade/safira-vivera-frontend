@@ -74,7 +74,7 @@ export function SavedViewsMenu() {
         <div
           role="menu"
           className={cn(
-            'absolute left-0 z-30 mt-2 w-72 overflow-hidden rounded-lg border border-line bg-surface shadow-lg',
+            'absolute right-0 z-30 mt-2 w-72 overflow-hidden rounded-lg border border-line bg-surface shadow-lg',
           )}
         >
           <div className="flex items-center justify-between border-b border-line px-3 py-2">

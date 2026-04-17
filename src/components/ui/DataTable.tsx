@@ -55,6 +55,11 @@ interface DataTableProps<T> {
   selectable?: boolean;
   /** Ações para linhas selecionadas (ex: exportar, pausar). */
   bulkActions?: { label: string; onRun: (rows: T[]) => void; variant?: 'default' | 'danger' }[];
+  /** Linha de resumo no rodapé da tabela (ex: totais).
+   *  Recebe os dados já filtrados/ordenados, mas antes da paginação. */
+  summaryRow?: (rows: T[], columns: DataTableColumn<T>[]) => Record<string, ReactNode>;
+  /** Label da linha de resumo. Default: "Total". */
+  summaryLabel?: string;
 }
 
 export function DataTable<T>({
@@ -72,6 +77,8 @@ export function DataTable<T>({
   columnStorageKey,
   selectable = false,
   bulkActions = [],
+  summaryRow,
+  summaryLabel = 'Total',
 }: DataTableProps<T>) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
@@ -490,6 +497,29 @@ export function DataTable<T>({
               })
             )}
           </tbody>
+              {summaryRow && sorted.length > 0 && (
+                <tfoot className="border-t-2 border-line bg-surface-subtle font-medium">
+                  <tr>
+                    {selectable && <td className="w-10 px-3 py-2.5" />}
+                    {visibleColumns.map((col, idx) => {
+                      const row = summaryRow(sorted, visibleColumns);
+                      const content = row[col.key];
+                      return (
+                        <td
+                          key={col.key}
+                          className={cn(
+                            'px-4 py-2.5 text-sm text-ink',
+                            col.align === 'right' && 'text-right tabular-nums',
+                            col.align === 'center' && 'text-center',
+                          )}
+                        >
+                          {content ?? (idx === 0 ? <span className="font-semibold">{summaryLabel}</span> : null)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </SortableContext>
         </DndContext>

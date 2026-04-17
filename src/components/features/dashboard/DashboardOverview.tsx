@@ -12,7 +12,6 @@ import { TopCampaignsTable } from '@/components/features/campaigns/TopCampaignsT
 import { DashboardOverviewSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
 import { EmptyStateCTA } from '@/components/features/campaigns/EmptyStateCTA';
 import { InsightsFeed } from './InsightsFeed';
-import { GoalsCard } from './GoalsCard';
 import { ShortcutCard } from './ShortcutCard';
 import { LayoutSwitcher } from './LayoutSwitcher';
 import { FreshnessIndicator } from '@/components/ui/FreshnessIndicator';
@@ -65,12 +64,11 @@ export function DashboardOverview() {
     insights: data && hasAnyData ? <InsightsFeed key="insights" data={data} /> : null,
     kpis:
       data && hasAnyData ? (
-        <div key="kpis" className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <div key="kpis">
           <KpiCards data={data} platformFilter={platform} />
-          {activeWidgets.includes('goals') && <GoalsCard data={data} />}
         </div>
       ) : null,
-    goals: null, // renderizado dentro de 'kpis' quando ambos estão ativos
+    goals: null, // card de metas removido do dashboard
     charts:
       data && hasAnyData ? (
         <div key="charts" className="grid gap-4 lg:grid-cols-2">

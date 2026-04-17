@@ -40,7 +40,7 @@ export const LAYOUTS: Record<LayoutKey, LayoutConfig> = {
   default: {
     label: 'Padrão',
     description: 'Tudo visível, ordem padrão',
-    widgets: ['insights', 'kpis', 'goals', 'charts', 'funnel', 'shortcuts', 'top-campaigns'],
+    widgets: ['insights', 'kpis', 'charts', 'funnel', 'shortcuts', 'top-campaigns'],
   },
   'conversions-focus': {
     label: 'Foco em conversões',
@@ -49,12 +49,12 @@ export const LAYOUTS: Record<LayoutKey, LayoutConfig> = {
   },
   'spend-focus': {
     label: 'Foco em investimento',
-    description: 'Prioriza metas de orçamento e charts',
-    widgets: ['goals', 'kpis', 'charts', 'top-campaigns', 'insights'],
+    description: 'Prioriza KPIs e charts',
+    widgets: ['kpis', 'charts', 'top-campaigns', 'insights'],
   },
   executive: {
     label: 'Visão executiva',
-    description: 'Apenas o essencial — insights, KPIs e metas',
-    widgets: ['insights', 'kpis', 'goals'],
+    description: 'Apenas o essencial — insights e KPIs',
+    widgets: ['insights', 'kpis'],
   },
 };
