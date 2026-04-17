@@ -1,8 +1,25 @@
 'use client';
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/cn';
 import { InfoIcon } from './InfoIcon';
+import { useColumnOrder } from '@/hooks/use-preferences';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -16,6 +33,8 @@ export interface DataTableColumn<T> {
   width?: string;
   /** Coluna pode ser ocultada pelo usuário via config. Default: true. */
   hideable?: boolean;
+  /** Coluna pode ser reordenada via drag. Default: igual a `hideable` (colunas de identidade ficam fixas). */
+  draggable?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -30,7 +49,7 @@ interface DataTableProps<T> {
   emptyLabel?: string;
   stickyHeader?: boolean;
   initialSort?: { key: string; direction: 'asc' | 'desc' };
-  /** Persiste colunas ocultas em localStorage. Chave única por tabela. */
+  /** Persiste colunas ocultas em localStorage + habilita DnD de ordem via /settings/preferences. */
   columnStorageKey?: string;
   /** Habilita seleção múltipla de linhas. */
   selectable?: boolean;
@@ -62,7 +81,26 @@ export function DataTable<T>({
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
   const [colConfigOpen, setColConfigOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isDesktop, setIsDesktop] = useState(true);
   const configRef = useRef<HTMLDivElement>(null);
+
+  // Ordem das colunas vem do backend (/settings/preferences). Sem columnStorageKey,
+  // usa ordem default — sem persistência nem DnD.
+  const defaultOrder = useMemo(() => columns.map((c) => c.key), [columns]);
+  const { order, setOrder, reset: resetOrder } = useColumnOrder(
+    columnStorageKey ?? '__none__',
+    defaultOrder,
+  );
+  const dndEnabled = !!columnStorageKey && isDesktop;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   // Hidratação das colunas ocultas
   useEffect(() => {
@@ -91,10 +129,53 @@ export function DataTable<T>({
     return () => document.removeEventListener('mousedown', onClick);
   }, [colConfigOpen]);
 
+  // Aplica ordem persistida + filtra escondidas
+  const orderedColumns = useMemo(() => {
+    const byKey = new Map(columns.map((c) => [c.key, c]));
+    const effective = columnStorageKey ? order : defaultOrder;
+    const out: DataTableColumn<T>[] = [];
+    for (const key of effective) {
+      const col = byKey.get(key);
+      if (col) out.push(col);
+    }
+    // Segurança: se algum key sumiu do order mas existe no columns (race), append.
+    for (const col of columns) {
+      if (!out.includes(col)) out.push(col);
+    }
+    return out;
+  }, [columns, order, defaultOrder, columnStorageKey]);
+
   const visibleColumns = useMemo(
-    () => columns.filter((c) => !hiddenCols.has(c.key)),
-    [columns, hiddenCols],
+    () => orderedColumns.filter((c) => !hiddenCols.has(c.key)),
+    [orderedColumns, hiddenCols],
   );
+
+  // IDs reordenáveis pra DnD: apenas colunas visíveis E com draggable != false E hideable != false
+  // (colunas de identidade como 'status' e 'name' ficam fixas).
+  const draggableIds = useMemo(
+    () =>
+      visibleColumns
+        .filter((c) => c.draggable !== false && c.hideable !== false)
+        .map((c) => c.key),
+    [visibleColumns],
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = order.indexOf(String(active.id));
+    const newIndex = order.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const next = [...order];
+    next.splice(oldIndex, 1);
+    next.splice(newIndex, 0, String(active.id));
+    setOrder(next);
+  };
 
   const filtered = useMemo(() => {
     if (!query || !searchable || !searchFilter) return data;
@@ -174,6 +255,42 @@ export function DataTable<T>({
 
   const hideableColumns = columns.filter((c) => c.hideable !== false);
 
+  const orderIsDefault = useMemo(
+    () => order.every((k, i) => k === defaultOrder[i]),
+    [order, defaultOrder],
+  );
+
+  const header = (
+    <thead className={cn('bg-surface-subtle', stickyHeader && 'sticky top-0 z-10')}>
+      <tr>
+        {selectable && (
+          <th className="w-10 px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected;
+              }}
+              onChange={toggleAllPage}
+              aria-label="Selecionar todas nesta página"
+              className="h-3.5 w-3.5 accent-accent"
+            />
+          </th>
+        )}
+        {visibleColumns.map((col) => (
+          <HeaderCell
+            key={col.key}
+            col={col}
+            active={sort?.key === col.key}
+            direction={sort?.direction}
+            onSortToggle={() => toggleSort(col.key)}
+            dndEnabled={dndEnabled && draggableIds.includes(col.key)}
+          />
+        ))}
+      </tr>
+    </thead>
+  );
+
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface">
       {(searchable || columnStorageKey) && (
@@ -207,14 +324,14 @@ export function DataTable<T>({
             </>
           )}
 
-          {columnStorageKey && hideableColumns.length > 0 && (
-            <div className="relative ml-auto" ref={configRef}>
+          {columnStorageKey && (
+            <div className={cn('relative', !searchable && 'ml-auto')} ref={configRef}>
               <button
                 type="button"
                 onClick={() => setColConfigOpen((v) => !v)}
                 aria-label="Configurar colunas"
                 title="Configurar colunas"
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-line bg-surface px-2 text-xs text-ink-muted hover:bg-surface-subtle hover:text-ink"
+                className="ml-auto inline-flex h-7 items-center gap-1 rounded-md border border-line bg-surface px-2 text-xs text-ink-muted hover:bg-surface-subtle hover:text-ink"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="3" y1="6" x2="21" y2="6" />
@@ -226,10 +343,10 @@ export function DataTable<T>({
               {colConfigOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 z-20 mt-2 w-56 rounded-lg border border-line bg-surface p-2 shadow-lg"
+                  className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-line bg-surface p-2 shadow-lg"
                 >
                   <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
-                    Colunas visíveis
+                    Visibilidade
                   </p>
                   {hideableColumns.map((col) => (
                     <label
@@ -245,6 +362,31 @@ export function DataTable<T>({
                       {col.header}
                     </label>
                   ))}
+
+                  {dndEnabled && (
+                    <>
+                      <div className="my-1 border-t border-line-subtle" />
+                      <p className="px-2 pt-1 text-[10px] text-ink-subtle">
+                        Arraste os títulos das colunas pra reordenar
+                      </p>
+                    </>
+                  )}
+
+                  {columnStorageKey && !orderIsDefault && (
+                    <>
+                      <div className="my-1 border-t border-line-subtle" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetOrder();
+                          setHiddenCols(new Set());
+                        }}
+                        className="w-full rounded px-2 py-1.5 text-left text-sm text-ink-muted hover:bg-surface-subtle hover:text-ink"
+                      >
+                        Restaurar ordem padrão
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -288,65 +430,10 @@ export function DataTable<T>({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className={cn('bg-surface-subtle', stickyHeader && 'sticky top-0 z-10')}>
-            <tr>
-              {selectable && (
-                <th className="w-10 px-3 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someSelected;
-                    }}
-                    onChange={toggleAllPage}
-                    aria-label="Selecionar todas nesta página"
-                    className="h-3.5 w-3.5 accent-accent"
-                  />
-                </th>
-              )}
-              {visibleColumns.map((col) => {
-                const active = sort?.key === col.key;
-                return (
-                  <th
-                    key={col.key}
-                    style={{ width: col.width }}
-                    className={cn(
-                      'px-4 py-2.5 text-xs font-medium text-ink-muted',
-                      col.align === 'right' && 'text-right',
-                      col.align === 'center' && 'text-center',
-                      col.sortable && 'cursor-pointer select-none hover:text-ink',
-                      col.className,
-                    )}
-                    onClick={col.sortable ? () => toggleSort(col.key) : undefined}
-                    aria-sort={
-                      active
-                        ? sort?.direction === 'asc'
-                          ? 'ascending'
-                          : 'descending'
-                        : undefined
-                    }
-                  >
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5',
-                        col.align === 'right' && 'justify-end',
-                        col.align === 'center' && 'justify-center',
-                      )}
-                    >
-                      {col.header}
-                      {col.tooltip && <InfoIcon tooltip={col.tooltip} />}
-                      {col.sortable && (
-                        <span aria-hidden className="text-[10px] text-ink-subtle">
-                          {active ? (sort?.direction === 'asc' ? '▲' : '▼') : '↕'}
-                        </span>
-                      )}
-                    </span>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={draggableIds} strategy={horizontalListSortingStrategy}>
+            <table className="w-full text-sm">
+              {header}
           <tbody>
             {paginated.length === 0 ? (
               <tr>
@@ -403,7 +490,9 @@ export function DataTable<T>({
               })
             )}
           </tbody>
-        </table>
+            </table>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {pageSize && sorted.length > pageSize && (
@@ -436,5 +525,64 @@ export function DataTable<T>({
         </div>
       )}
     </div>
+  );
+}
+
+interface HeaderCellProps<T> {
+  col: DataTableColumn<T>;
+  active: boolean;
+  direction?: 'asc' | 'desc';
+  onSortToggle: () => void;
+  dndEnabled: boolean;
+}
+
+function HeaderCell<T>({ col, active, direction, onSortToggle, dndEnabled }: HeaderCellProps<T>) {
+  const sortable = useSortable({ id: col.key, disabled: !dndEnabled });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable;
+
+  const style: React.CSSProperties = {
+    width: col.width,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    cursor: dndEnabled ? 'grab' : undefined,
+  };
+
+  return (
+    <th
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'px-4 py-2.5 text-xs font-medium text-ink-muted',
+        col.align === 'right' && 'text-right',
+        col.align === 'center' && 'text-center',
+        col.sortable && 'select-none hover:text-ink',
+        dndEnabled && 'touch-none',
+        col.className,
+      )}
+      aria-sort={
+        active ? (direction === 'asc' ? 'ascending' : 'descending') : undefined
+      }
+      {...(dndEnabled ? attributes : {})}
+      {...(dndEnabled ? listeners : {})}
+    >
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5',
+          col.align === 'right' && 'justify-end',
+          col.align === 'center' && 'justify-center',
+        )}
+        onClick={col.sortable ? (e) => { e.stopPropagation(); onSortToggle(); } : undefined}
+        style={col.sortable ? { cursor: 'pointer' } : undefined}
+      >
+        {col.header}
+        {col.tooltip && <InfoIcon tooltip={col.tooltip} />}
+        {col.sortable && (
+          <span aria-hidden className="text-[10px] text-ink-subtle">
+            {active ? (direction === 'asc' ? '▲' : '▼') : '↕'}
+          </span>
+        )}
+      </span>
+    </th>
   );
 }
