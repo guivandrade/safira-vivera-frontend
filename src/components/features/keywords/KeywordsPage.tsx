@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
+import { TutorialSteps } from '@/components/ui/TutorialSteps';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import { mockKeywords, KeywordRow } from '@/mocks/keywords';
@@ -113,6 +114,15 @@ export function KeywordsPage() {
         variant="sample-data"
         title="Exibindo dados de exemplo"
         description="Aguardando integração com Google Ads keyword_view — a UI já está pronta para receber os dados reais."
+      />
+
+      <TutorialSteps
+        title="Como essa página vai funcionar quando o backend estiver pronto"
+        steps={[
+          { done: true, title: 'UI implementada', description: 'Tabela, ordenação, busca e export estão prontos.' },
+          { done: false, title: 'Backend expõe /campaigns/keywords', description: 'Query GAQL com keyword_view + ad_group_criterion.keyword.text.', action: { label: 'Ver spec de API', href: 'https://github.com/guivandrade/safira-vivera-backend/issues' } },
+          { done: false, title: 'Swap do mock pela chamada real', description: 'Uma mudança só no hook — a página não precisa ser tocada.' },
+        ]}
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

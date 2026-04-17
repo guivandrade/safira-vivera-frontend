@@ -15,10 +15,12 @@ import { ConversionsChart } from './ConversionsChart';
 import { DetailedCampaignsTable, CampaignDetailDrawer } from './DetailedCampaignsTable';
 import { KpiCards } from './KpiCards';
 import { EmptyStateCTA } from './EmptyStateCTA';
+import { AnnotationsPanel } from './AnnotationsPanel';
 import { Button } from '@/components/ui/Button';
+import { FreshnessIndicator } from '@/components/ui/FreshnessIndicator';
 
 export function CampaignsDashboard() {
-  const { data, isLoading, error, refetch, isFetching } = useCampaignInsights();
+  const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
   const monthFilter = useFiltersStore((s) => s.monthFilter);
   const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
@@ -27,6 +29,7 @@ export function CampaignsDashboard() {
   const toast = useToast();
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeCampaign, setActiveCampaign] = useState<CampaignSummary | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -41,11 +44,11 @@ export function CampaignsDashboard() {
       );
     } else if (errorParam === 'oauth_denied') {
       toast.warning('Você cancelou a autorização no Google.', { title: 'Conexão cancelada' });
-    } else if (errorParam) {
+    } else if (errorParam && errorParam !== 'period' && errorParam !== 'platform') {
       toast.error(`Erro na conexão: ${errorParam}`, { title: 'Erro' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, []);
 
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
@@ -72,9 +75,6 @@ export function CampaignsDashboard() {
     );
   }, [data]);
 
-  // Aplica drill-down: se há monthFilter, filtra monthlyData e a lista
-  // de campanhas é filtrada por aproximação (mantemos todas, já que
-  // `campaigns[]` não tem mês associado — drill-down só afeta charts + KPIs).
   const filteredMonthly: MonthlyData[] = useMemo(() => {
     if (!data) return [];
     if (!monthFilter) return data.monthlyData;
@@ -101,21 +101,33 @@ export function CampaignsDashboard() {
             Todas as campanhas ativas + histórico — scan por performance e investimento.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          leftIcon={
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-              <path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-              <path d="M3 21v-5h5" />
-            </svg>
-          }
-        >
-          {isFetching ? 'Atualizando...' : 'Atualizar'}
-        </Button>
+        <div className="flex items-center gap-3">
+          <FreshnessIndicator updatedAt={dataUpdatedAt} isFetching={isFetching} />
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted">
+            <input
+              type="checkbox"
+              checked={showComparison}
+              onChange={(e) => setShowComparison(e.target.checked)}
+              className="h-3.5 w-3.5 accent-accent"
+            />
+            Comparar período anterior
+          </label>
+          <Button
+            variant="secondary"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            leftIcon={
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                <path d="M3 21v-5h5" />
+              </svg>
+            }
+          >
+            {isFetching ? 'Atualizando...' : 'Atualizar'}
+          </Button>
+        </div>
       </div>
 
       {monthFilter && (
@@ -180,15 +192,19 @@ export function CampaignsDashboard() {
               data={data.monthlyData}
               platformFilter={platform}
               onBarClick={setMonthFilter}
+              showComparison={showComparison}
             />
             <ConversionsChart
               data={data.monthlyData}
               platformFilter={platform}
               onBarClick={setMonthFilter}
+              showComparison={showComparison}
             />
           </div>
         )
       )}
+
+      {data && hasAnyData && <AnnotationsPanel monthlyData={data.monthlyData} />}
 
       {isLoading ? (
         <TableSkeleton />

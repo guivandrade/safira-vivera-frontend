@@ -1,26 +1,25 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo } from 'react';
 import { useCampaignInsights } from '@/hooks/use-campaign-insights';
 import { useFiltersStore } from '@/stores/filters-store';
-import { Card } from '@/components/ui/Card';
 import { KpiCards } from '@/components/features/campaigns/KpiCards';
 import { SpendChart } from '@/components/features/campaigns/SpendChart';
 import { ConversionsChart } from '@/components/features/campaigns/ConversionsChart';
 import { FunnelChart } from '@/components/features/campaigns/FunnelChart';
 import { TopCampaignsTable } from '@/components/features/campaigns/TopCampaignsTable';
 import {
-  KpiCardsSkeleton,
-  ChartsSkeleton,
-  TableSkeleton,
+  DashboardOverviewSkeleton,
 } from '@/components/features/campaigns/CampaignsSkeleton';
 import { EmptyStateCTA } from '@/components/features/campaigns/EmptyStateCTA';
 import { InsightsFeed } from './InsightsFeed';
 import { WeekdayHeatmap } from './WeekdayHeatmap';
+import { GoalsCard } from './GoalsCard';
+import { ShortcutCard } from './ShortcutCard';
+import { FreshnessIndicator } from '@/components/ui/FreshnessIndicator';
 
 export function DashboardOverview() {
-  const { data, isLoading, error } = useCampaignInsights();
+  const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
   const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
 
@@ -54,19 +53,49 @@ export function DashboardOverview() {
     return [...filtered].sort((a, b) => b.spend - a.spend).slice(0, 5);
   }, [data, platform]);
 
+  // Previews para shortcut cards
+  const topKeywordsPreview = useMemo(
+    () => [
+      { label: 'vivera joias anel', value: '94 conv.' },
+      { label: 'anel de ouro feminino', value: '41 conv.' },
+      { label: 'aliança casamento', value: '38 conv.' },
+    ],
+    [],
+  );
+  const topCreativesPreview = useMemo(
+    () => [
+      { label: 'Black Friday Hero', value: '680 conv.' },
+      { label: 'Coleção Primavera', value: '412 conv.' },
+      { label: 'Dia das Mães Vídeo', value: '298 conv.' },
+    ],
+    [],
+  );
+  const topGeoPreview = useMemo(
+    () => [
+      { label: 'Pinheiros', value: '94 conv.' },
+      { label: 'Vila Madalena', value: '78 conv.' },
+      { label: 'Jardim Paulistano', value: '62 conv.' },
+    ],
+    [],
+  );
+
   const handleBarClick = (monthIso: string) => {
     setMonthFilter(monthIso);
-    // Navega até /campanhas para Vera ver detalhes do mês
     window.location.href = '/campanhas';
   };
 
+  if (isLoading) return <DashboardOverviewSkeleton />;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Visão geral</h1>
-        <p className="mt-0.5 text-sm text-ink-muted">
-          Os números do negócio em 15 segundos — use os filtros no topo.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">Visão geral</h1>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            Os números do negócio em 15 segundos — use os filtros no topo.
+          </p>
+        </div>
+        <FreshnessIndicator updatedAt={dataUpdatedAt} isFetching={isFetching} onRefresh={() => refetch()} />
       </div>
 
       {error && (
@@ -77,25 +106,30 @@ export function DashboardOverview() {
 
       {data && hasAnyData && <InsightsFeed data={data} />}
 
-      {isLoading ? <KpiCardsSkeleton /> : data && hasAnyData && <KpiCards data={data} platformFilter={platform} />}
-
-      {isLoading ? (
-        <ChartsSkeleton />
-      ) : (
-        data && hasAnyData && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <SpendChart
-              data={data.monthlyData}
-              platformFilter={platform}
-              onBarClick={handleBarClick}
-            />
-            <ConversionsChart
-              data={data.monthlyData}
-              platformFilter={platform}
-              onBarClick={handleBarClick}
-            />
+      {data && hasAnyData && (
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+          <div>
+            <KpiCards data={data} platformFilter={platform} />
           </div>
-        )
+          <GoalsCard data={data} />
+        </div>
+      )}
+
+      {data && hasAnyData && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SpendChart
+            data={data.monthlyData}
+            platformFilter={platform}
+            onBarClick={handleBarClick}
+            showComparison
+          />
+          <ConversionsChart
+            data={data.monthlyData}
+            platformFilter={platform}
+            onBarClick={handleBarClick}
+            showComparison
+          />
+        </div>
       )}
 
       {/* Funil + atalhos */}
@@ -112,17 +146,20 @@ export function DashboardOverview() {
             <ShortcutCard
               href="/palavras-chave"
               title="Palavras-chave"
-              description="Veja quais termos convertem mais no Google"
+              description="Termos que convertem mais no Google"
+              preview={topKeywordsPreview}
             />
             <ShortcutCard
               href="/criativos"
               title="Criativos"
               description="Rank de anúncios Meta por conversão"
+              preview={topCreativesPreview}
             />
             <ShortcutCard
               href="/geografia"
               title="Geografia"
               description="De onde vêm suas conversões"
+              preview={topGeoPreview}
             />
           </div>
         </div>
@@ -130,37 +167,9 @@ export function DashboardOverview() {
 
       {data && hasAnyData && <WeekdayHeatmap />}
 
-      {isLoading ? (
-        <TableSkeleton />
-      ) : (
-        data && hasAnyData && topCampaigns.length > 0 && <TopCampaignsTable campaigns={topCampaigns} />
-      )}
+      {data && hasAnyData && topCampaigns.length > 0 && <TopCampaignsTable campaigns={topCampaigns} />}
 
-      {!isLoading && data && !hasAnyData && <EmptyStateCTA variant="no-data" />}
+      {data && !hasAnyData && <EmptyStateCTA variant="no-data" />}
     </div>
-  );
-}
-
-function ShortcutCard({
-  href,
-  title,
-  description,
-}: {
-  href: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link href={href}>
-      <Card className="group transition-colors hover:border-accent/40 hover:bg-surface-subtle" padding="md">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-ink">{title}</p>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4 text-ink-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-ink" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M13 6l6 6-6 6" />
-          </svg>
-        </div>
-        <p className="mt-1 text-xs text-ink-muted">{description}</p>
-      </Card>
-    </Link>
   );
 }

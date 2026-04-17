@@ -10,6 +10,7 @@ import { useToast } from '@/providers/toast-provider';
 import { Card } from '@/components/ui/Card';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 function formatExpiry(expiresAt: string | null): string {
   if (!expiresAt) return 'sem expiração conhecida';
@@ -30,6 +31,7 @@ export function ConnectionStatusCards() {
   const disconnectMutation = useDisconnectGoogleAds();
   const toast = useToast();
   const [connecting, setConnecting] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   const handleConnectGoogle = async () => {
     setConnecting(true);
@@ -44,8 +46,8 @@ export function ConnectionStatusCards() {
     }
   };
 
-  const handleDisconnectGoogle = async () => {
-    if (!window.confirm('Desconectar Google Ads?')) return;
+  const performDisconnect = async () => {
+    setConfirmDisconnect(false);
     try {
       await disconnectMutation.mutateAsync();
       await refetch();
@@ -107,7 +109,7 @@ export function ConnectionStatusCards() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={handleDisconnectGoogle}
+                  onClick={() => setConfirmDisconnect(true)}
                   disabled={disconnectMutation.isPending}
                 >
                   {disconnectMutation.isPending ? 'Desconectando...' : 'Desconectar'}
@@ -121,6 +123,17 @@ export function ConnectionStatusCards() {
           </div>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={confirmDisconnect}
+        title="Desconectar Google Ads?"
+        description="Você precisará autorizar novamente na próxima vez que quiser ver dados do Google. Nenhuma campanha será afetada."
+        confirmLabel="Desconectar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={performDisconnect}
+        onCancel={() => setConfirmDisconnect(false)}
+      />
     </section>
   );
 }

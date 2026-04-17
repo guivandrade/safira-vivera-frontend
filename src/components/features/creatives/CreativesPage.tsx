@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
+import { TutorialSteps } from '@/components/ui/TutorialSteps';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import { mockCreatives, CreativeRow } from '@/mocks/creatives';
@@ -144,6 +145,15 @@ export function CreativesPage() {
         variant="sample-data"
         title="Exibindo dados de exemplo"
         description="Aguardando integração com Meta Ads em nível de criativo — a UI já está pronta."
+      />
+
+      <TutorialSteps
+        title="Como essa página vai funcionar quando o backend estiver pronto"
+        steps={[
+          { done: true, title: 'UI galeria + tabela implementada' },
+          { done: false, title: 'Backend expõe /campaigns/creatives', description: 'Meta Marketing API com level=ad e creative{id,name,thumbnail_url}.' },
+          { done: false, title: 'Swap do mock pela chamada real' },
+        ]}
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

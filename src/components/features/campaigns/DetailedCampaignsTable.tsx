@@ -8,6 +8,8 @@ import { CardHeader } from '@/components/ui/Card';
 import { formatCurrency, formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
 import { CsvExportButton } from './CsvExportButton';
 import { useFiltersStore } from '@/stores/filters-store';
+import { useToast } from '@/providers/toast-provider';
+import { buildCsv, downloadCsv } from '@/lib/csv-export';
 
 interface DetailedCampaignsTableProps {
   data: CampaignInsightsResponse;
@@ -16,6 +18,7 @@ interface DetailedCampaignsTableProps {
 
 export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTableProps) {
   const platform = useFiltersStore((s) => s.platform);
+  const toast = useToast();
 
   const filteredCampaigns = useMemo(() => {
     if (platform === 'all') return data.campaigns;
@@ -28,6 +31,7 @@ export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTa
       header: 'Status',
       render: () => <StatusDot status="active" />,
       width: '100px',
+      hideable: false,
     },
     {
       key: 'provider',
@@ -40,6 +44,7 @@ export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTa
       header: 'Campanha',
       sortable: true,
       sortValue: (c) => c.name.toLowerCase(),
+      hideable: false,
       render: (c) => (
         <div className="min-w-0">
           <p className="truncate font-medium text-ink">{c.name}</p>
@@ -130,6 +135,26 @@ export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTa
         initialSort={{ key: 'spend', direction: 'desc' }}
         stickyHeader
         emptyLabel="Nenhuma campanha encontrada"
+        columnStorageKey="campaigns-detailed"
+        selectable
+        bulkActions={[
+          {
+            label: 'Exportar CSV',
+            onRun: (rows) => {
+              const csv = buildCsv(rows, [
+                { header: 'Plataforma', value: (c) => (c.provider === 'google' ? 'Google Ads' : 'Meta Ads') },
+                { header: 'Nome', value: (c) => c.name },
+                { header: 'ID', value: (c) => c.id },
+                { header: 'Investimento (R$)', value: (c) => c.spend.toFixed(2) },
+                { header: 'Conversões', value: (c) => c.conversions },
+                { header: 'Cliques', value: (c) => c.clicks },
+                { header: 'Impressões', value: (c) => c.impressions },
+              ]);
+              downloadCsv(`campanhas-selecionadas-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+              toast.success(`${rows.length} campanha${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`);
+            },
+          },
+        ]}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
+import { TutorialSteps } from '@/components/ui/TutorialSteps';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import { LocalRadiusMap } from './LocalRadiusMap';
@@ -121,6 +122,16 @@ export function GeographyPage() {
         variant="sample-data"
         title="Exibindo dados de exemplo"
         description="Aguardando integração com geographic_view (Google) e breakdown por região (Meta). Quando chegar, a UI preenche sozinha."
+      />
+
+      <TutorialSteps
+        title="Como essa página vai funcionar quando o backend estiver pronto"
+        steps={[
+          { done: true, title: 'UI mapa radial + tabela implementada' },
+          { done: false, title: 'Configurar endereço da clínica', description: 'Endpoint /settings/clinic com geocoding automático.' },
+          { done: false, title: 'Backend expõe /campaigns/geography/local', description: 'Cruza user_location_view (Google) com lat/lng da clínica pra filtrar no raio.' },
+          { done: false, title: 'Swap do mock pela chamada real' },
+        ]}
       />
 
       {/* KPIs */}
