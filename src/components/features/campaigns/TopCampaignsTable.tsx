@@ -1,10 +1,11 @@
 'use client';
 
+import { ReactNode } from 'react';
 import { CampaignSummary } from '@/types/campaigns';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { CardHeader } from '@/components/ui/Card';
-import { formatCurrency, formatNumber } from '@/lib/formatters';
+import { formatCurrency, formatNumber, safeDiv } from '@/lib/formatters';
 import { CsvExportButton } from './CsvExportButton';
 
 interface TopCampaignsTableProps {
@@ -19,6 +20,7 @@ export function TopCampaignsTable({ campaigns, onRowClick }: TopCampaignsTablePr
       header: 'Status',
       render: () => <StatusDot status="active" />,
       width: '110px',
+      hideable: false,
     },
     {
       key: 'provider',
@@ -30,6 +32,7 @@ export function TopCampaignsTable({ campaigns, onRowClick }: TopCampaignsTablePr
       key: 'name',
       header: 'Campanha',
       render: (c) => <span className="font-medium text-ink">{c.name}</span>,
+      hideable: false,
     },
     {
       key: 'spend',
@@ -66,6 +69,20 @@ export function TopCampaignsTable({ campaigns, onRowClick }: TopCampaignsTablePr
     },
   ];
 
+  const computeSummary = (rows: CampaignSummary[]): Record<string, ReactNode> => {
+    const totalSpend = rows.reduce((s, c) => s + c.spend, 0);
+    const totalConv = rows.reduce((s, c) => s + c.conversions, 0);
+    const totalClicks = rows.reduce((s, c) => s + c.clicks, 0);
+    const cpa = safeDiv(totalSpend, totalConv);
+    return {
+      status: <span className="text-xs font-semibold text-ink-muted">Total ({rows.length})</span>,
+      spend: formatCurrency(totalSpend, 2),
+      conv: formatNumber(totalConv),
+      clicks: formatNumber(totalClicks),
+      cpa: totalConv > 0 ? formatCurrency(cpa, 2) : '—',
+    };
+  };
+
   return (
     <div className="space-y-3">
       <CardHeader
@@ -80,6 +97,8 @@ export function TopCampaignsTable({ campaigns, onRowClick }: TopCampaignsTablePr
         onRowClick={onRowClick}
         initialSort={{ key: 'spend', direction: 'desc' }}
         emptyLabel="Nenhuma campanha encontrada no período"
+        columnStorageKey="top-campaigns"
+        summaryRow={computeSummary}
       />
     </div>
   );

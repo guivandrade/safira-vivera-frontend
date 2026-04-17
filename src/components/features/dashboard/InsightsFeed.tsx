@@ -6,13 +6,18 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
 import { CampaignInsightsResponse } from '@/types/campaigns';
 import { generateInsights, Insight, InsightSeverity } from '@/lib/insights';
+import { useFiltersStore } from '@/stores/filters-store';
 
 interface InsightsFeedProps {
   data: CampaignInsightsResponse;
 }
 
 export function InsightsFeed({ data }: InsightsFeedProps) {
-  const insights = useMemo(() => generateInsights(data), [data]);
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const insights = useMemo(
+    () => generateInsights(data, { includeBoosts }),
+    [data, includeBoosts],
+  );
 
   if (insights.length === 0) return null;
 

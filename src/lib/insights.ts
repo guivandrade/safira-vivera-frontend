@@ -11,6 +11,13 @@ export interface Insight {
   action?: { label: string; href: string };
 }
 
+interface GenerateInsightsOptions {
+  /** Se true, considera posts turbinados (Meta Business Suite) nas agregações.
+   *  Default false — boosts inflam o CPA e geram falsos-positivos em
+   *  "Meta vs Google", "campanha zerada", etc. */
+  includeBoosts?: boolean;
+}
+
 /**
  * Detecta padrões acionáveis nos dados de campanhas e gera um feed de
  * observações pra Vera. Totalmente client-side — roda sobre o payload
@@ -18,16 +25,25 @@ export interface Insight {
  *
  * Cada regra é curta e auto-contida; adicionar regra nova = adicionar função.
  */
-export function generateInsights(data: CampaignInsightsResponse): Insight[] {
+export function generateInsights(
+  data: CampaignInsightsResponse,
+  options: GenerateInsightsOptions = {},
+): Insight[] {
   const insights: Insight[] = [];
 
   if (!data || data.monthlyData.length === 0) return insights;
 
+  // Campanhas filtradas pelo mesmo critério usado nos KPIs — garante que
+  // insights e cards mostrem o mesmo "universo" de dados.
+  const campaigns = data.campaigns.filter(
+    (c) => options.includeBoosts || c.objective !== 'boost',
+  );
+
   insights.push(...detectMonthOverMonthSwing(data.monthlyData));
-  insights.push(...detectCpaOutliers(data.campaigns));
-  insights.push(...detectPlatformImbalance(data.monthlyData));
-  insights.push(...detectLowPerformers(data.campaigns));
-  insights.push(...detectStandoutWinner(data.campaigns));
+  insights.push(...detectCpaOutliers(campaigns));
+  insights.push(...detectPlatformImbalance(campaigns));
+  insights.push(...detectLowPerformers(campaigns));
+  insights.push(...detectStandoutWinner(campaigns));
   insights.push(...detectRecentZeroConversions(data.monthlyData));
 
   // Ordena: critical → warning → info → positive
@@ -99,23 +115,31 @@ function detectCpaOutliers(campaigns: CampaignSummary[]): Insight[] {
   return [];
 }
 
-function detectPlatformImbalance(monthly: MonthlyData[]): Insight[] {
-  if (monthly.length === 0) return [];
-  const totals = monthly.reduce(
-    (acc, m) => ({
-      google: acc.google + m.google.spend,
-      meta: acc.meta + m.meta.spend,
-      googleConv: acc.googleConv + m.google.conversions,
-      metaConv: acc.metaConv + m.meta.conversions,
-    }),
-    { google: 0, meta: 0, googleConv: 0, metaConv: 0 },
+/**
+ * Calcula a partir de `campaigns[]` (não `monthlyData`) pra respeitar
+ * o filtro de objective/boost. MonthlyData é account-level e sempre
+ * inclui boosts, o que inflaria o CPA Meta.
+ */
+function detectPlatformImbalance(campaigns: CampaignSummary[]): Insight[] {
+  const totals = campaigns.reduce(
+    (acc, c) => {
+      if (c.provider === 'meta') {
+        acc.metaSpend += c.spend;
+        acc.metaConv += c.conversions;
+      } else {
+        acc.googleSpend += c.spend;
+        acc.googleConv += c.conversions;
+      }
+      return acc;
+    },
+    { metaSpend: 0, metaConv: 0, googleSpend: 0, googleConv: 0 },
   );
 
-  const totalSpend = totals.google + totals.meta;
+  const totalSpend = totals.metaSpend + totals.googleSpend;
   if (totalSpend === 0) return [];
 
-  const metaCpa = safeDiv(totals.meta, totals.metaConv);
-  const googleCpa = safeDiv(totals.google, totals.googleConv);
+  const metaCpa = safeDiv(totals.metaSpend, totals.metaConv);
+  const googleCpa = safeDiv(totals.googleSpend, totals.googleConv);
 
   if (totals.metaConv > 0 && totals.googleConv > 0) {
     if (metaCpa < googleCpa * 0.6) {
