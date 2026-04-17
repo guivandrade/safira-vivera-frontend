@@ -39,6 +39,7 @@ export function CommandPalette() {
       { id: 'nav-integracoes', label: 'Ir para Integrações', group: 'Navegar', keywords: ['google', 'meta', 'conectar'], run: () => router.push('/integracoes') },
       { id: 'nav-config', label: 'Ir para Configurações', group: 'Navegar', run: () => router.push('/configuracoes') },
       // Filtro
+      { id: 'period-7d', label: 'Período: Últimos 7 dias', group: 'Filtro', keywords: ['semana', 'recente'], run: () => setPeriod({ preset: 'last-7d' }) },
       { id: 'period-this-month', label: 'Período: Este mês', group: 'Filtro', run: () => setPeriod({ preset: 'this-month' }) },
       { id: 'period-90d', label: 'Período: Últimos 90 dias', group: 'Filtro', run: () => setPeriod({ preset: 'last-90d' }) },
       { id: 'period-180d', label: 'Período: Últimos 180 dias', group: 'Filtro', run: () => setPeriod({ preset: 'last-180d' }) },

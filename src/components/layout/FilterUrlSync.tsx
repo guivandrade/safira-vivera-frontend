@@ -13,7 +13,7 @@ import type { PlatformFilter } from '@/components/ui/PlatformTabs';
  *
  * Permite deep links tipo `/campanhas?platform=meta&period=this-year`.
  */
-const VALID_PRESETS: PresetKey[] = ['this-month', 'last-90d', 'last-180d', 'this-year', 'custom'];
+const VALID_PRESETS: PresetKey[] = ['last-7d', 'this-month', 'last-90d', 'last-180d', 'this-year', 'custom'];
 const VALID_PLATFORMS: PlatformFilter[] = ['all', 'meta', 'google'];
 
 export function FilterUrlSync() {

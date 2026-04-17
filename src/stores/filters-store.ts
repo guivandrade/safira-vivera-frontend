@@ -32,7 +32,7 @@ export const useFiltersStore = create<FiltersState>()(
       partialize: (state) => ({ period: state.period, platform: state.platform }),
       migrate: (persisted: any) => {
         const legacy = persisted?.period?.preset;
-        if (legacy && !['this-month', 'last-90d', 'last-180d', 'this-year', 'custom'].includes(legacy)) {
+        if (legacy && !['last-7d', 'this-month', 'last-90d', 'last-180d', 'this-year', 'custom'].includes(legacy)) {
           return { ...persisted, period: defaultPeriod };
         }
         return persisted;
