@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
+import { ApiErrorsBanner } from '@/components/ui/ApiErrorsBanner';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import {
@@ -107,9 +108,22 @@ export function CreativesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Criativos</h1>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            Rank dos anúncios do Meta por conversão — identifique o que está funcionando.
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-ink">
+            Criativos do Meta Ads
+            <span className="inline-flex h-6 items-center rounded-md bg-meta/10 px-2 text-[11px] font-semibold uppercase tracking-wider text-meta">
+              Meta
+            </span>
+          </h1>
+          <p className="mt-0.5 max-w-2xl text-sm text-ink-muted">
+            Rank dos anúncios do Meta Ads por conversão — identifique qual criativo
+            (imagem, vídeo, carrossel) está performando melhor.
+            {' '}
+            <span className="text-ink-subtle">Google Ads não aparece aqui porque usa rede de pesquisa (keywords) — veja em{' '}
+              <a href="/palavras-chave" className="text-accent hover:underline">
+                Palavras-chave
+              </a>
+              .
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -147,16 +161,7 @@ export function CreativesPage() {
         </div>
       )}
 
-      {data?.errors && data.errors.length > 0 && (
-        <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-2.5 text-sm">
-          <p className="font-medium text-warning">Alguns dados podem estar incompletos</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-ink-muted">
-            {data.errors.map((err, idx) => (
-              <li key={idx}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <ApiErrorsBanner errors={data?.errors} />
 
       {isLoading ? (
         <>
