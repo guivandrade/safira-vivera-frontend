@@ -5,6 +5,7 @@ import { Sidebar, SidebarContent } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { MobileSidebar } from '@/components/layout/MobileSidebar';
 import { FilterBar } from '@/components/layout/FilterBar';
+import { SavedViewsMenu } from '@/components/layout/SavedViewsMenu';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { FilterUrlSync } from '@/components/layout/FilterUrlSync';
 
@@ -28,14 +29,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
 
-        {/* FilterBar mobile (abaixo do header em telas estreitas) */}
-        <div className="border-b border-line bg-surface px-4 py-2 sm:hidden">
-          <div className="overflow-x-auto">
+        {/* Filter strip dedicado — FilterBar scrolla se precisar; SavedViewsMenu fica ancorado na direita */}
+        <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-4 py-2 md:px-6">
+          <div className="min-w-0 flex-1 overflow-x-auto">
             <FilterBar />
+          </div>
+          <div className="shrink-0">
+            <SavedViewsMenu />
           </div>
         </div>
 
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto" aria-label="Conteúdo principal">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-auto"
+          aria-label="Conteúdo principal"
+        >
           <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">{children}</div>
         </main>
       </div>
