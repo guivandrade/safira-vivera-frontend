@@ -1,11 +1,19 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import {
+  ComingSoonIllustration,
+  DisconnectedIllustration,
+  NoDataIllustration,
+} from './illustrations';
+
+type Variant = 'coming-soon' | 'sample-data' | 'no-data' | 'disconnected';
 
 interface EmptyStatePlaceholderProps {
-  variant?: 'coming-soon' | 'sample-data';
+  variant?: Variant;
   title: string;
   description?: string;
   icon?: ReactNode;
+  action?: ReactNode;
   className?: string;
 }
 
@@ -14,6 +22,7 @@ export function EmptyStatePlaceholder({
   title,
   description,
   icon,
+  action,
   className,
 }: EmptyStatePlaceholderProps) {
   if (variant === 'sample-data') {
@@ -35,16 +44,32 @@ export function EmptyStatePlaceholder({
     );
   }
 
+  const illustration = icon ?? defaultIllustration(variant);
+
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-lg border border-dashed border-line bg-surface-muted px-6 py-12 text-center',
+        'flex flex-col items-center justify-center rounded-lg border border-dashed border-line bg-surface-muted px-6 py-10 text-center',
         className,
       )}
     >
-      {icon && <div className="mb-3 text-ink-subtle">{icon}</div>}
+      {illustration && <div className="mb-4 w-32 text-ink-subtle">{illustration}</div>}
       <h3 className="text-sm font-semibold text-ink">{title}</h3>
       {description && <p className="mt-1 max-w-sm text-xs text-ink-muted">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
+}
+
+function defaultIllustration(variant: Variant): ReactNode | null {
+  switch (variant) {
+    case 'no-data':
+      return <NoDataIllustration className="w-full" />;
+    case 'disconnected':
+      return <DisconnectedIllustration className="w-full" />;
+    case 'coming-soon':
+      return <ComingSoonIllustration className="w-full" />;
+    default:
+      return null;
+  }
 }

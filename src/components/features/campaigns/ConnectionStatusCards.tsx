@@ -6,6 +6,7 @@ import {
   useDisconnectGoogleAds,
   useGoogleAdsStatus,
 } from '@/hooks/use-integration-status';
+import { useToast } from '@/providers/toast-provider';
 import { Card } from '@/components/ui/Card';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { Button } from '@/components/ui/Button';
@@ -27,31 +28,30 @@ function formatExpiry(expiresAt: string | null): string {
 export function ConnectionStatusCards() {
   const { data: googleStatus, isLoading, refetch } = useGoogleAdsStatus();
   const disconnectMutation = useDisconnectGoogleAds();
+  const toast = useToast();
   const [connecting, setConnecting] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleConnectGoogle = async () => {
     setConnecting(true);
-    setActionError(null);
     try {
       const response = await apiClient.get<{ authUrl: string }>(
         '/integrations/google-ads/oauth/authorize',
       );
       window.location.href = response.data.authUrl;
     } catch (err: any) {
-      setActionError(err?.response?.data?.message || 'Erro ao conectar Google Ads');
+      toast.error(err?.response?.data?.message || 'Erro ao conectar Google Ads');
       setConnecting(false);
     }
   };
 
   const handleDisconnectGoogle = async () => {
-    setActionError(null);
     if (!window.confirm('Desconectar Google Ads?')) return;
     try {
       await disconnectMutation.mutateAsync();
       await refetch();
+      toast.success('Google Ads desconectado');
     } catch (err: any) {
-      setActionError(err?.response?.data?.message || 'Erro ao desconectar Google Ads');
+      toast.error(err?.response?.data?.message || 'Erro ao desconectar Google Ads');
     }
   };
 
@@ -59,12 +59,6 @@ export function ConnectionStatusCards() {
 
   return (
     <section aria-label="Status das integrações" className="space-y-3">
-      {actionError && (
-        <div className="rounded-md border border-danger/30 bg-danger/5 px-4 py-2.5 text-sm text-danger">
-          {actionError}
-        </div>
-      )}
-
       <div className="grid gap-3 md:grid-cols-2">
         {/* Meta */}
         <Card padding="md">

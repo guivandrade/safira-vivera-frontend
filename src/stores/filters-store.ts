@@ -8,8 +8,11 @@ import type { PlatformFilter } from '@/components/ui/PlatformTabs';
 interface FiltersState {
   period: DateRangeValue;
   platform: PlatformFilter;
+  /** Drill-down: quando setado, filtra visualizações para um mês específico (YYYY-MM). */
+  monthFilter: string | null;
   setPeriod: (period: DateRangeValue) => void;
   setPlatform: (platform: PlatformFilter) => void;
+  setMonthFilter: (month: string | null) => void;
 }
 
 const defaultPeriod: DateRangeValue = { preset: 'last-180d' };
@@ -19,13 +22,14 @@ export const useFiltersStore = create<FiltersState>()(
     (set) => ({
       period: defaultPeriod,
       platform: 'all',
-      setPeriod: (period) => set({ period }),
+      monthFilter: null,
+      setPeriod: (period) => set({ period, monthFilter: null }),
       setPlatform: (platform) => set({ platform }),
+      setMonthFilter: (monthFilter) => set({ monthFilter }),
     }),
     {
       name: 'safira-filters',
       partialize: (state) => ({ period: state.period, platform: state.platform }),
-      // Invalida preset antigo (1m/3m/6m/12m) se persistido num cliente antes da mudança
       migrate: (persisted: any) => {
         const legacy = persisted?.period?.preset;
         if (legacy && !['this-month', 'last-90d', 'last-180d', 'this-year', 'custom'].includes(legacy)) {

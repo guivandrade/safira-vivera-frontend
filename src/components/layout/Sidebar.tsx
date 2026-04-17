@@ -106,12 +106,20 @@ const items: NavItem[] = [
 ];
 
 export function Sidebar() {
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-surface md:flex">
+      <SidebarContent />
+    </aside>
+  );
+}
+
+export function SidebarContent({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const primary = items.filter((i) => i.group === 'primary');
   const secondary = items.filter((i) => i.group === 'secondary');
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-surface md:flex">
+    <div className="flex h-full flex-col">
       <div className="flex h-14 items-center border-b border-line px-5">
         <span className="text-base font-semibold tracking-tight text-ink">Safira</span>
         <span className="ml-1.5 text-xs text-ink-subtle">· Vivera</span>
@@ -119,24 +127,33 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {primary.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} />
+          <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
         ))}
 
         <div className="my-3 border-t border-line-subtle" />
 
         {secondary.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} />
+          <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
         ))}
       </nav>
-    </aside>
+    </div>
   );
 }
 
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavLink({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
   const active = pathname === item.href || pathname.startsWith(item.href + '/');
   return (
     <Link
       href={item.href}
+      onClick={onNavigate}
       className={cn(
         'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors',
         active
