@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ClinicLocation, NeighborhoodRow } from '@/mocks/geography';
+import type { ClinicCenter, NeighborhoodMetrics } from '@/types/api';
 import { formatNumber } from '@/lib/formatters';
 
 interface LocalRadiusMapProps {
-  clinic: ClinicLocation;
-  neighborhoods: NeighborhoodRow[];
+  clinic: ClinicCenter;
+  neighborhoods: NeighborhoodMetrics[];
   highlightedId?: string | null;
   onSelect?: (id: string) => void;
 }

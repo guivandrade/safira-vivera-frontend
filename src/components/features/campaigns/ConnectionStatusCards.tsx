@@ -89,14 +89,31 @@ export function ConnectionStatusCards() {
               G
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-ink">Google Ads</p>
+              <p className="text-sm font-semibold text-ink">
+                Google Ads
+                {googleStatus?.customerName && (
+                  <span className="ml-1.5 font-normal text-ink-muted">
+                    · {googleStatus.customerName}
+                  </span>
+                )}
+              </p>
               <p className="truncate text-xs text-ink-muted">
                 {isLoading
                   ? 'Verificando...'
                   : googleConnected
                     ? formatExpiry(googleStatus?.expiresAt ?? null)
                     : 'Não conectado'}
+                {googleStatus?.customerId && (
+                  <span className="ml-2 font-mono text-[11px] text-ink-subtle">
+                    {googleStatus.customerId}
+                  </span>
+                )}
               </p>
+              {googleConnected && googleStatus?.hasRefreshToken === false && (
+                <p className="mt-0.5 truncate text-[11px] text-warning">
+                  ⚠ Conexão incompleta — reconecte pra garantir renovação automática.
+                </p>
+              )}
               {googleStatus?.lastError && (
                 <p className="mt-0.5 truncate text-[11px] text-warning">
                   ⚠ {googleStatus.lastError}
@@ -104,7 +121,15 @@ export function ConnectionStatusCards() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <StatusDot status={googleConnected ? 'active' : 'paused'} />
+              <StatusDot
+                status={
+                  googleConnected
+                    ? googleStatus?.hasRefreshToken === false
+                      ? 'error'
+                      : 'active'
+                    : 'paused'
+                }
+              />
               {googleConnected ? (
                 <Button
                   size="sm"

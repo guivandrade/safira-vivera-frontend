@@ -2,16 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
+import type { GoogleAdsStatus } from '@/types/api';
 
-export interface GoogleAdsStatus {
-  connected: boolean;
-  expiresAt: string | null;
-  lastRefreshedAt: string | null;
-  lastError: string | null;
-  nextRefreshAt?: string | null;
-  connectedAt?: string | null;
-  lastUpdatedAt?: string | null;
-}
+export type { GoogleAdsStatus };
 
 export function useGoogleAdsStatus(): UseQueryResult<GoogleAdsStatus, Error> {
   return useQuery({

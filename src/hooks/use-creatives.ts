@@ -2,23 +2,23 @@
 
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import { CampaignInsightsResponse } from '@/types/campaigns';
+import type { CreativesResponse } from '@/types/api';
 import { useFiltersStore } from '@/stores/filters-store';
 import { resolveRange } from '@/lib/period';
 
-export function useCampaignInsights(): UseQueryResult<CampaignInsightsResponse, Error> {
+export function useCreatives(): UseQueryResult<CreativesResponse, Error> {
   const period = useFiltersStore((s) => s.period);
   const { from, to } = resolveRange(period);
 
   return useQuery({
-    queryKey: ['campaign-insights', from, to],
+    queryKey: ['creatives', from, to],
     queryFn: async () => {
-      const response = await apiClient.get<CampaignInsightsResponse>(
-        `/campaigns/insights?from=${from}&to=${to}`,
+      const res = await apiClient.get<CreativesResponse>(
+        `/campaigns/creatives?from=${from}&to=${to}&limit=200`,
       );
-      return response.data;
+      return res.data;
     },
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 2,
   });

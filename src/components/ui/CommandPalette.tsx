@@ -34,6 +34,8 @@ export function CommandPalette() {
       { id: 'nav-criativos', label: 'Ir para Criativos', group: 'Navegar', keywords: ['ads', 'ad'], run: () => router.push('/criativos') },
       { id: 'nav-geografia', label: 'Ir para Geografia', group: 'Navegar', keywords: ['mapa', 'bairro'], run: () => router.push('/geografia') },
       { id: 'nav-funil', label: 'Ir para Funil', group: 'Navegar', keywords: ['convers\u00e3o'], run: () => router.push('/funil') },
+      { id: 'nav-comparar', label: 'Comparar períodos', group: 'Navegar', keywords: ['compare', 'diff'], run: () => router.push('/comparar') },
+      { id: 'nav-clinica', label: 'Configurar clínica', group: 'Navegar', keywords: ['endere\u00e7o', 'raio'], run: () => router.push('/configuracoes/clinica') },
       { id: 'nav-integracoes', label: 'Ir para Integrações', group: 'Navegar', keywords: ['google', 'meta', 'conectar'], run: () => router.push('/integracoes') },
       { id: 'nav-config', label: 'Ir para Configurações', group: 'Navegar', run: () => router.push('/configuracoes') },
       // Filtro

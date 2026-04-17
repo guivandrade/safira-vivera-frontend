@@ -3,23 +3,26 @@
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { CampaignInsightsResponse } from '@/types/campaigns';
-import { useFiltersStore } from '@/stores/filters-store';
-import { resolveRange } from '@/lib/period';
 
-export function useCampaignInsights(): UseQueryResult<CampaignInsightsResponse, Error> {
-  const period = useFiltersStore((s) => s.period);
-  const { from, to } = resolveRange(period);
-
+/**
+ * Variante do useCampaignInsights pra casos onde o range vem explícito
+ * (não do filters-store). Usado no split-view compare.
+ */
+export function useInsightsRange(
+  from: string,
+  to: string,
+  enabled = true,
+): UseQueryResult<CampaignInsightsResponse, Error> {
   return useQuery({
     queryKey: ['campaign-insights', from, to],
     queryFn: async () => {
-      const response = await apiClient.get<CampaignInsightsResponse>(
+      const res = await apiClient.get<CampaignInsightsResponse>(
         `/campaigns/insights?from=${from}&to=${to}`,
       );
-      return response.data;
+      return res.data;
     },
+    enabled: enabled && !!from && !!to,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
-    retry: 2,
   });
 }
