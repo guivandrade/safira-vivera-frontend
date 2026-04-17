@@ -10,6 +10,9 @@ pnpm-lock.yaml
 .next/
 out/
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Build
 dist/
 build/
