@@ -10,9 +10,13 @@ interface FiltersState {
   platform: PlatformFilter;
   /** Drill-down: quando setado, filtra visualizações para um mês específico (YYYY-MM). */
   monthFilter: string | null;
+  /** Incluir posts turbinados do Meta Business Suite nos cálculos. Default: false
+   *  (boosts têm spend sem conversão trackada — inflariam o CPA). */
+  includeBoosts: boolean;
   setPeriod: (period: DateRangeValue) => void;
   setPlatform: (platform: PlatformFilter) => void;
   setMonthFilter: (month: string | null) => void;
+  setIncludeBoosts: (v: boolean) => void;
 }
 
 const defaultPeriod: DateRangeValue = { preset: 'last-180d' };
@@ -23,13 +27,19 @@ export const useFiltersStore = create<FiltersState>()(
       period: defaultPeriod,
       platform: 'all',
       monthFilter: null,
+      includeBoosts: false,
       setPeriod: (period) => set({ period, monthFilter: null }),
       setPlatform: (platform) => set({ platform }),
       setMonthFilter: (monthFilter) => set({ monthFilter }),
+      setIncludeBoosts: (includeBoosts) => set({ includeBoosts }),
     }),
     {
       name: 'safira-filters',
-      partialize: (state) => ({ period: state.period, platform: state.platform }),
+      partialize: (state) => ({
+        period: state.period,
+        platform: state.platform,
+        includeBoosts: state.includeBoosts,
+      }),
       migrate: (persisted: any) => {
         const legacy = persisted?.period?.preset;
         if (legacy && !['last-7d', 'this-month', 'last-90d', 'last-180d', 'this-year', 'custom'].includes(legacy)) {

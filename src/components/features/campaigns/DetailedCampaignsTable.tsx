@@ -18,12 +18,16 @@ interface DetailedCampaignsTableProps {
 
 export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTableProps) {
   const platform = useFiltersStore((s) => s.platform);
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
   const toast = useToast();
 
   const filteredCampaigns = useMemo(() => {
-    if (platform === 'all') return data.campaigns;
-    return data.campaigns.filter((c) => c.provider === platform);
-  }, [data.campaigns, platform]);
+    return data.campaigns.filter((c) => {
+      if (platform !== 'all' && c.provider !== platform) return false;
+      if (!includeBoosts && c.objective === 'boost') return false;
+      return true;
+    });
+  }, [data.campaigns, platform, includeBoosts]);
 
   const columns: DataTableColumn<CampaignSummary>[] = [
     {
@@ -47,7 +51,10 @@ export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTa
       hideable: false,
       render: (c) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-ink">{c.name}</p>
+          <p className="truncate font-medium text-ink">
+            {c.name}
+            {c.objective === 'boost' && <BoostBadge />}
+          </p>
           <p className="truncate font-mono text-[10px] text-ink-subtle">{c.id}</p>
         </div>
       ),
@@ -157,6 +164,17 @@ export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTa
         ]}
       />
     </div>
+  );
+}
+
+function BoostBadge() {
+  return (
+    <span
+      className="ml-2 inline-flex items-center rounded border border-warning/30 bg-warning/10 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wider text-warning"
+      title="Post turbinado via Meta Business Suite — sem conversão trackada"
+    >
+      Boost
+    </span>
   );
 }
 

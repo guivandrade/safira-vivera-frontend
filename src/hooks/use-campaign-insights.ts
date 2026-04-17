@@ -8,13 +8,16 @@ import { resolveRange } from '@/lib/period';
 
 export function useCampaignInsights(): UseQueryResult<CampaignInsightsResponse, Error> {
   const period = useFiltersStore((s) => s.period);
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
   const { from, to } = resolveRange(period);
 
   return useQuery({
-    queryKey: ['campaign-insights', from, to],
+    queryKey: ['campaign-insights', from, to, includeBoosts],
     queryFn: async () => {
+      const params = new URLSearchParams({ from, to });
+      if (includeBoosts) params.set('includeBoosts', 'true');
       const response = await apiClient.get<CampaignInsightsResponse>(
-        `/campaigns/insights?from=${from}&to=${to}`,
+        `/campaigns/insights?${params.toString()}`,
       );
       return response.data;
     },

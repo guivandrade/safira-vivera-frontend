@@ -47,6 +47,7 @@ export function CommandPalette() {
       { id: 'platform-all', label: 'Plataforma: Todas', group: 'Filtro', run: () => setPlatform('all') },
       { id: 'platform-meta', label: 'Plataforma: Meta', group: 'Filtro', keywords: ['facebook', 'instagram'], run: () => setPlatform('meta') },
       { id: 'platform-google', label: 'Plataforma: Google', group: 'Filtro', run: () => setPlatform('google') },
+      { id: 'toggle-boosts', label: 'Alternar: incluir posts turbinados', group: 'Filtro', keywords: ['boost', 'meta business suite'], run: () => useFiltersStore.getState().setIncludeBoosts(!useFiltersStore.getState().includeBoosts) },
       // Ação
       { id: 'theme-toggle', label: 'Alternar tema (claro/escuro)', group: 'Ação', keywords: ['dark', 'light', 'modo'], run: () => toggleTheme() },
       { id: 'print', label: 'Imprimir / salvar como PDF', group: 'Ação', keywords: ['pdf', 'imprimir'], run: () => window.print() },
