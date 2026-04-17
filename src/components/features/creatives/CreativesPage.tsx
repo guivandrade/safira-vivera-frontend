@@ -16,8 +16,28 @@ import type { CreativeRow } from '@/types/api';
 import { formatCurrency, formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
 import { cn } from '@/lib/cn';
 
+type SortKey = 'conversions' | 'spend' | 'ctr' | 'cpa' | 'impressions';
+
+const SORT_OPTIONS: { key: SortKey; label: string; value: (r: CreativeRow) => number }[] = [
+  { key: 'conversions', label: 'Mais conversões', value: (r) => r.conversions },
+  { key: 'spend', label: 'Maior investimento', value: (r) => r.spend },
+  { key: 'impressions', label: 'Mais impressões', value: (r) => r.impressions },
+  {
+    key: 'ctr',
+    label: 'Melhor CTR',
+    value: (r) => safeDiv(r.clicks, r.impressions),
+  },
+  {
+    key: 'cpa',
+    // CPA: menor é melhor → invertemos o sort (multiplica por -1 depois)
+    label: 'Menor CPA',
+    value: (r) => (r.conversions > 0 ? safeDiv(r.spend, r.conversions) : Infinity),
+  },
+];
+
 export function CreativesPage() {
   const [mode, setMode] = useState<'gallery' | 'table'>('gallery');
+  const [sortBy, setSortBy] = useState<SortKey>('conversions');
   const { data, isLoading, error } = useCreatives();
 
   // Página é Meta Ads puro. Se o backend retornar `provider: 'google'` (text
@@ -42,10 +62,12 @@ export function CreativesPage() {
 
   const hasData = rows.length > 0;
 
-  const sortedByPerformance = useMemo(
-    () => [...rows].sort((a, b) => b.conversions - a.conversions),
-    [rows],
-  );
+  const sortedRows = useMemo(() => {
+    const option = SORT_OPTIONS.find((o) => o.key === sortBy)!;
+    const sorted = [...rows].sort((a, b) => option.value(b) - option.value(a));
+    // CPA é melhor quando menor — inverte a ordem
+    return sortBy === 'cpa' ? sorted.reverse() : sorted;
+  }, [rows, sortBy]);
 
   const columns: DataTableColumn<CreativeRow>[] = useMemo(
     () => [
@@ -144,7 +166,23 @@ export function CreativesPage() {
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {mode === 'gallery' && (
+            <label className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
+              <span className="hidden sm:inline">Ordenar por:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortKey)}
+                className="rounded-md border border-line bg-surface px-2 py-1 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 py-1 text-xs text-ink-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-meta" /> Meta Ads
           </span>
@@ -214,27 +252,8 @@ export function CreativesPage() {
 
           {mode === 'gallery' ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {sortedByPerformance.map((c, idx) => (
-                <Card key={c.id} padding="none" className="overflow-hidden">
-                  <div className="relative flex h-40 items-end justify-start overflow-hidden">
-                    <CreativeThumb row={c} />
-                    <span className="absolute right-2 top-2 rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white backdrop-blur">
-                      {c.type}
-                    </span>
-                    <span className="absolute left-2 bottom-2 rounded bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-ink">
-                      #{idx + 1}
-                    </span>
-                  </div>
-                  <div className="p-4">
-                    <p className="truncate text-sm font-medium text-ink">{c.name}</p>
-                    <p className="truncate text-[11px] text-ink-subtle">{c.campaignName}</p>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                      <Stat label="Conv." value={formatNumber(c.conversions)} />
-                      <Stat label="CTR" value={formatPercent(safeDiv(c.clicks, c.impressions) * 100, 1)} />
-                      <Stat label="CPA" value={c.conversions > 0 ? formatCurrency(safeDiv(c.spend, c.conversions), 0) : '—'} />
-                    </div>
-                  </div>
-                </Card>
+              {sortedRows.map((c, idx) => (
+                <CreativeGalleryCard key={c.id} row={c} rank={idx + 1} />
               ))}
             </div>
           ) : (
@@ -262,6 +281,74 @@ export function CreativesPage() {
       )}
     </div>
   );
+}
+
+function CreativeGalleryCard({ row, rank }: { row: CreativeRow; rank: number }) {
+  // previewUrl vem do backend (ex: link permanente do post no Instagram ou
+  // preview do Ads Manager). Se existir, o card inteiro vira um link
+  // externo — Vera consegue ver o post exatamente como está no Instagram.
+  const hasLink = !!row.previewUrl;
+
+  const inner = (
+    <Card
+      padding="none"
+      className={cn(
+        'overflow-hidden transition-all',
+        hasLink && 'cursor-pointer hover:border-accent/40 hover:shadow-md',
+      )}
+    >
+      <div className="relative flex h-40 items-end justify-start overflow-hidden">
+        <CreativeThumb row={row} />
+        <span className="absolute right-2 top-2 rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white backdrop-blur">
+          {row.type}
+        </span>
+        <span className="absolute left-2 bottom-2 rounded bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-ink">
+          #{rank}
+        </span>
+        {hasLink && (
+          <span
+            className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded bg-white/85 px-1.5 py-0.5 text-[10px] font-medium text-ink"
+            title="Abrir post no Instagram"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Ver post
+          </span>
+        )}
+      </div>
+      <div className="p-4">
+        <p className="truncate text-sm font-medium text-ink">{row.name}</p>
+        <p className="truncate text-[11px] text-ink-subtle">{row.campaignName}</p>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+          <Stat label="Conv." value={formatNumber(row.conversions)} />
+          <Stat label="CTR" value={formatPercent(safeDiv(row.clicks, row.impressions) * 100, 1)} />
+          <Stat
+            label="CPA"
+            value={row.conversions > 0 ? formatCurrency(safeDiv(row.spend, row.conversions), 0) : '—'}
+          />
+        </div>
+      </div>
+    </Card>
+  );
+
+  if (hasLink) {
+    return (
+      <a
+        href={row.previewUrl!}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Abrir post "${row.name}" no Instagram em nova aba`}
+        className="block"
+      >
+        {inner}
+      </a>
+    );
+  }
+
+  return inner;
 }
 
 function CreativeThumb({ row, size }: { row: CreativeRow; size?: number }) {
