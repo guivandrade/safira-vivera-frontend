@@ -67,12 +67,31 @@ export function useColumnOrder(tableKey: string, defaultOrder: string[]): {
   const { data: prefs } = usePreferences();
   const update = useUpdatePreferences();
 
-  const stored = prefs?.tableColumnsOrder?.[tableKey];
+  const lsKey = `safira-col-order-${tableKey}`;
+
+  // Hydrate SSR-safe: lê localStorage só no client, depois do mount.
+  // Primeiro render usa defaultOrder (evita hydration mismatch), então
+  // useEffect puxa do localStorage se houver.
   const [order, setOrderState] = useState<string[]>(() =>
-    mergeOrder(stored ?? defaultOrder, defaultOrder),
+    mergeOrder(defaultOrder, defaultOrder),
   );
 
-  // Sincroniza quando prefs chegarem depois (ex: revalidate)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(lsKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[];
+        setOrderState(mergeOrder(parsed, defaultOrder));
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lsKey]);
+
+  // Sincroniza com backend quando prefs chegarem (caso outro device tenha editado)
+  const stored = prefs?.tableColumnsOrder?.[tableKey];
   const storedKey = stored?.join(',');
   useEffect(() => {
     if (stored) setOrderState(mergeOrder(stored, defaultOrder));
@@ -83,6 +102,16 @@ export function useColumnOrder(tableKey: string, defaultOrder: string[]): {
 
   const persist = useCallback(
     (next: string[]) => {
+      // localStorage imediato — garante que F5 não perde a ordem mesmo se
+      // backend falhar ou tiver latência.
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(lsKey, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+      }
+      // Backend debounced — cross-device sync (best-effort).
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         const merged: UserPreferences = {
@@ -95,7 +124,7 @@ export function useColumnOrder(tableKey: string, defaultOrder: string[]): {
         update.mutate(merged);
       }, 500);
     },
-    [prefs, tableKey, update],
+    [prefs, tableKey, update, lsKey],
   );
 
   const setOrder = useCallback(
@@ -108,6 +137,13 @@ export function useColumnOrder(tableKey: string, defaultOrder: string[]): {
 
   const reset = useCallback(() => {
     setOrderState(defaultOrder);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(lsKey);
+      } catch {
+        // ignore
+      }
+    }
     const merged: UserPreferences = {
       ...(prefs ?? {}),
       tableColumnsOrder: {
@@ -116,7 +152,7 @@ export function useColumnOrder(tableKey: string, defaultOrder: string[]): {
       },
     };
     update.mutate(merged);
-  }, [defaultOrder, prefs, tableKey, update]);
+  }, [defaultOrder, prefs, tableKey, update, lsKey]);
 
   return { order, setOrder, reset };
 }
