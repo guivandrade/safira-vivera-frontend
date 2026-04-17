@@ -17,7 +17,8 @@ export function Card({ children, padding = 'md', className, ...rest }: CardProps
   return (
     <div
       className={cn(
-        'rounded-lg border border-line bg-surface',
+        // min-w-0 permite encolher dentro de grids/flex (senão filhos forçam overflow)
+        'min-w-0 rounded-lg border border-line bg-surface',
         paddingMap[padding],
         className,
       )}
@@ -41,9 +42,11 @@ export function CardHeader({
 }) {
   return (
     <div className={cn('flex items-start justify-between gap-3 mb-4', className)}>
-      <div>
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
-        {description && <p className="mt-0.5 text-xs text-ink-muted">{description}</p>}
+      <div className="min-w-0 flex-1">
+        <h3 className="break-words text-sm font-semibold text-ink">{title}</h3>
+        {description && (
+          <p className="mt-0.5 break-words text-xs text-ink-muted">{description}</p>
+        )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

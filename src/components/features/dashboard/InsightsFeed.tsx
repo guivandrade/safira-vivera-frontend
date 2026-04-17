@@ -68,8 +68,8 @@ function InsightCard({ insight }: { insight: Insight }) {
           {s.label}
         </span>
       </div>
-      <p className="mt-1.5 text-sm font-semibold text-ink">{insight.title}</p>
-      <p className="mt-1 text-xs text-ink-muted">{insight.description}</p>
+      <p className="mt-1.5 break-words text-sm font-semibold text-ink">{insight.title}</p>
+      <p className="mt-1 break-words text-xs text-ink-muted">{insight.description}</p>
       {insight.action && (
         <Link
           href={insight.action.href}
