@@ -34,19 +34,18 @@ export type WidgetKey =
   | 'charts'
   | 'funnel'
   | 'shortcuts'
-  | 'heatmap'
   | 'top-campaigns';
 
 export const LAYOUTS: Record<LayoutKey, LayoutConfig> = {
   default: {
     label: 'Padrão',
     description: 'Tudo visível, ordem padrão',
-    widgets: ['insights', 'kpis', 'goals', 'charts', 'funnel', 'shortcuts', 'heatmap', 'top-campaigns'],
+    widgets: ['insights', 'kpis', 'goals', 'charts', 'funnel', 'shortcuts', 'top-campaigns'],
   },
   'conversions-focus': {
     label: 'Foco em conversões',
-    description: 'Prioriza insights, funil e heatmap',
-    widgets: ['insights', 'funnel', 'kpis', 'heatmap', 'top-campaigns', 'charts'],
+    description: 'Prioriza insights e funil',
+    widgets: ['insights', 'funnel', 'kpis', 'top-campaigns', 'charts'],
   },
   'spend-focus': {
     label: 'Foco em investimento',

@@ -12,7 +12,6 @@ import { TopCampaignsTable } from '@/components/features/campaigns/TopCampaignsT
 import { DashboardOverviewSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
 import { EmptyStateCTA } from '@/components/features/campaigns/EmptyStateCTA';
 import { InsightsFeed } from './InsightsFeed';
-import { WeekdayHeatmap } from './WeekdayHeatmap';
 import { GoalsCard } from './GoalsCard';
 import { ShortcutCard } from './ShortcutCard';
 import { LayoutSwitcher } from './LayoutSwitcher';
@@ -109,7 +108,6 @@ export function DashboardOverview() {
         </div>
       ) : null,
     shortcuts: null, // renderizado dentro de 'funnel' quando ambos ativos
-    heatmap: data && hasAnyData ? <WeekdayHeatmap key="heatmap" /> : null,
     'top-campaigns':
       data && hasAnyData && topCampaigns.length > 0 ? (
         <TopCampaignsTable key="top" campaigns={topCampaigns} />
