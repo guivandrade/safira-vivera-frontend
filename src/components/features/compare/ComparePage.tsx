@@ -32,12 +32,19 @@ export function ComparePage() {
   const [rangeA, setRangeA] = useState<Range>(defaultRangeA);
   const [rangeB, setRangeB] = useState<Range>(defaultRangeB);
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const includeInactive = useFiltersStore((s) => s.includeInactive);
 
   const { data: dataA, isLoading: loadingA } = useInsightsRange(rangeA.from, rangeA.to);
   const { data: dataB, isLoading: loadingB } = useInsightsRange(rangeB.from, rangeB.to);
 
-  const metricsA = useMemo(() => computeMetrics(dataA, includeBoosts), [dataA, includeBoosts]);
-  const metricsB = useMemo(() => computeMetrics(dataB, includeBoosts), [dataB, includeBoosts]);
+  const metricsA = useMemo(
+    () => computeMetrics(dataA, includeBoosts, includeInactive),
+    [dataA, includeBoosts, includeInactive],
+  );
+  const metricsB = useMemo(
+    () => computeMetrics(dataB, includeBoosts, includeInactive),
+    [dataB, includeBoosts, includeInactive],
+  );
 
   return (
     <div className="space-y-6">
@@ -94,11 +101,16 @@ interface Metrics {
 function computeMetrics(
   data: CampaignInsightsResponse | undefined,
   includeBoosts: boolean,
+  includeInactive: boolean,
 ): Metrics {
   if (!data) return { spend: 0, conversions: 0, clicks: 0, impressions: 0, cpa: 0, ctr: 0 };
-  // Agrega a partir de campaigns[] filtrando boosts (Meta Business Suite)
+  // Agrega a partir de campaigns[] filtrando boosts e pausadas/removidas
   // pra consistência com os KPIs do resto do app.
-  const filtered = data.campaigns.filter((c) => includeBoosts || c.objective !== 'boost');
+  const filtered = data.campaigns.filter((c) => {
+    if (!includeBoosts && c.objective === 'boost') return false;
+    if (!includeInactive && c.status && c.status !== 'ACTIVE') return false;
+    return true;
+  });
   const spend = filtered.reduce((s, c) => s + c.spend, 0);
   const conversions = filtered.reduce((s, c) => s + c.conversions, 0);
   const clicks = filtered.reduce((s, c) => s + c.clicks, 0);

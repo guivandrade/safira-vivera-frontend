@@ -13,10 +13,14 @@ interface FiltersState {
   /** Incluir posts turbinados do Meta Business Suite nos cálculos. Default: false
    *  (boosts têm spend sem conversão trackada — inflariam o CPA). */
   includeBoosts: boolean;
+  /** Incluir campanhas com status PAUSED/REMOVED nas listas. Default: false
+   *  (Vera quase sempre quer ver só o que está ativo). */
+  includeInactive: boolean;
   setPeriod: (period: DateRangeValue) => void;
   setPlatform: (platform: PlatformFilter) => void;
   setMonthFilter: (month: string | null) => void;
   setIncludeBoosts: (v: boolean) => void;
+  setIncludeInactive: (v: boolean) => void;
 }
 
 const defaultPeriod: DateRangeValue = { preset: 'last-180d' };
@@ -28,10 +32,12 @@ export const useFiltersStore = create<FiltersState>()(
       platform: 'all',
       monthFilter: null,
       includeBoosts: false,
+      includeInactive: false,
       setPeriod: (period) => set({ period, monthFilter: null }),
       setPlatform: (platform) => set({ platform }),
       setMonthFilter: (monthFilter) => set({ monthFilter }),
       setIncludeBoosts: (includeBoosts) => set({ includeBoosts }),
+      setIncludeInactive: (includeInactive) => set({ includeInactive }),
     }),
     {
       name: 'safira-filters',
@@ -39,6 +45,7 @@ export const useFiltersStore = create<FiltersState>()(
         period: state.period,
         platform: state.platform,
         includeBoosts: state.includeBoosts,
+        includeInactive: state.includeInactive,
       }),
       migrate: (persisted: any) => {
         const legacy = persisted?.period?.preset;

@@ -1,9 +1,10 @@
 import { cn } from '@/lib/cn';
+import type { CampaignStatus } from '@/types/campaigns';
 
-export type CampaignStatus = 'active' | 'paused' | 'removed' | 'error';
+export type StatusDotVariant = 'active' | 'paused' | 'removed' | 'error';
 
 const config: Record<
-  CampaignStatus,
+  StatusDotVariant,
   { label: string; dot: string; text: string }
 > = {
   active: { label: 'Ativa', dot: 'bg-success', text: 'text-ink' },
@@ -13,7 +14,7 @@ const config: Record<
 };
 
 interface StatusDotProps {
-  status: CampaignStatus;
+  status: StatusDotVariant;
   label?: string;
   className?: string;
 }
@@ -26,4 +27,22 @@ export function StatusDot({ status, label, className }: StatusDotProps) {
       {label ?? c.label}
     </span>
   );
+}
+
+/**
+ * Converte o status cru do backend (UPPERCASE) pro variant do StatusDot.
+ * Se vier undefined (backend antigo), assume 'active' como fallback seguro.
+ */
+export function statusToVariant(status: CampaignStatus | undefined): StatusDotVariant {
+  if (!status) return 'active';
+  switch (status) {
+    case 'ACTIVE':
+      return 'active';
+    case 'PAUSED':
+      return 'paused';
+    case 'REMOVED':
+      return 'removed';
+    default:
+      return 'active';
+  }
 }

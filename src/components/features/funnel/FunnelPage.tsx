@@ -13,6 +13,7 @@ export function FunnelPage() {
   const { data, isLoading } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const includeInactive = useFiltersStore((s) => s.includeInactive);
 
   const stages = useMemo(() => {
     if (!data) return { global: [], meta: [], google: [] };
@@ -21,6 +22,7 @@ export function FunnelPage() {
       const camps = data.campaigns.filter((c) => {
         if (c.provider !== p) return false;
         if (!includeBoosts && c.objective === 'boost') return false;
+        if (!includeInactive && c.status && c.status !== 'ACTIVE') return false;
         return true;
       });
       return {
@@ -45,7 +47,7 @@ export function FunnelPage() {
     ];
 
     return { global: toStages(global), meta: toStages(meta), google: toStages(google) };
-  }, [data, includeBoosts]);
+  }, [data, includeBoosts, includeInactive]);
 
   const displayed =
     platform === 'meta' ? stages.meta : platform === 'google' ? stages.google : stages.global;

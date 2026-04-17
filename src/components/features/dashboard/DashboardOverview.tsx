@@ -20,6 +20,7 @@ export function DashboardOverview() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const includeInactive = useFiltersStore((s) => s.includeInactive);
   const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
   const { layout } = useDashboardLayout();
   const activeWidgets = LAYOUTS[layout].widgets;
@@ -31,6 +32,7 @@ export function DashboardOverview() {
     const filteredCampaigns = data.campaigns.filter((c) => {
       if (platform !== 'all' && c.provider !== platform) return false;
       if (!includeBoosts && c.objective === 'boost') return false;
+      if (!includeInactive && c.status && c.status !== 'ACTIVE') return false;
       return true;
     });
     const impressions = filteredCampaigns.reduce((sum, c) => sum + c.impressions, 0);
@@ -44,7 +46,7 @@ export function DashboardOverview() {
       ],
       hasAnyData: data.monthlyData.length > 0,
     };
-  }, [data, platform, includeBoosts]);
+  }, [data, platform, includeBoosts, includeInactive]);
 
   const topCampaigns = useMemo(() => {
     if (!data) return [];
@@ -54,7 +56,7 @@ export function DashboardOverview() {
       return true;
     });
     return [...filtered].sort((a, b) => b.spend - a.spend).slice(0, 5);
-  }, [data, platform, includeBoosts]);
+  }, [data, platform, includeBoosts, includeInactive]);
 
   const handleBarClick = (monthIso: string) => {
     setMonthFilter(monthIso);
@@ -137,6 +139,18 @@ export function DashboardOverview() {
               className="h-3.5 w-3.5 accent-accent"
             />
             Incluir posts turbinados
+          </label>
+          <label
+            className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted"
+            title="Por padrão, só campanhas ACTIVE aparecem. Ligue pra ver pausadas e removidas no histórico."
+          >
+            <input
+              type="checkbox"
+              checked={includeInactive}
+              onChange={(e) => useFiltersStore.getState().setIncludeInactive(e.target.checked)}
+              className="h-3.5 w-3.5 accent-accent"
+            />
+            Incluir pausadas/removidas
           </label>
           <LayoutSwitcher />
         </div>

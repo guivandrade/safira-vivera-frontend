@@ -27,6 +27,8 @@ export function CampaignsDashboard() {
   const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
   const setIncludeBoosts = useFiltersStore((s) => s.setIncludeBoosts);
+  const includeInactive = useFiltersStore((s) => s.includeInactive);
+  const setIncludeInactive = useFiltersStore((s) => s.setIncludeInactive);
   const { data: googleStatus } = useGoogleAdsStatus();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -161,6 +163,18 @@ export function CampaignsDashboard() {
               className="h-3.5 w-3.5 accent-accent"
             />
             Incluir posts turbinados
+          </label>
+          <label
+            className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted"
+            title="Por padrão, só campanhas ACTIVE aparecem. Ligue pra ver pausadas/removidas."
+          >
+            <input
+              type="checkbox"
+              checked={includeInactive}
+              onChange={(e) => setIncludeInactive(e.target.checked)}
+              className="h-3.5 w-3.5 accent-accent"
+            />
+            Incluir pausadas/removidas
           </label>
           <Button
             variant="secondary"

@@ -14,9 +14,10 @@ interface InsightsFeedProps {
 
 export function InsightsFeed({ data }: InsightsFeedProps) {
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const includeInactive = useFiltersStore((s) => s.includeInactive);
   const insights = useMemo(
-    () => generateInsights(data, { includeBoosts }),
-    [data, includeBoosts],
+    () => generateInsights(data, { includeBoosts, includeInactive }),
+    [data, includeBoosts, includeInactive],
   );
 
   if (insights.length === 0) return null;

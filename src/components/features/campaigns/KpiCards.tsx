@@ -49,6 +49,7 @@ const DEFAULT_ORDER = ['spend', 'conversions', 'cpa', 'ctr', 'impressions', 'cli
 
 export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const includeInactive = useFiltersStore((s) => s.includeInactive);
   const { order, hidden, setOrder, toggleHidden, reset } = useKpiPrefs(
     'dashboard',
     DEFAULT_ORDER,
@@ -81,6 +82,7 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
     const filteredCampaigns = data.campaigns.filter((c) => {
       if (platformFilter !== 'all' && c.provider !== platformFilter) return false;
       if (!includeBoosts && c.objective === 'boost') return false;
+      if (!includeInactive && c.status && c.status !== 'ACTIVE') return false;
       return true;
     });
 
@@ -172,7 +174,7 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
     };
 
     return order.map((k) => byKey[k]).filter((m): m is KpiMetric => !!m);
-  }, [data, platformFilter, includeBoosts, order]);
+  }, [data, platformFilter, includeBoosts, includeInactive, order]);
 
   const visibleMetrics = useMemo(
     () => metrics.filter((m) => !hidden.has(m.key)),
