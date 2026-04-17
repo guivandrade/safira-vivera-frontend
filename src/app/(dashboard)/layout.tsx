@@ -1,16 +1,25 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, Suspense, useState } from 'react';
 import { Sidebar, SidebarContent } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { MobileSidebar } from '@/components/layout/MobileSidebar';
 import { FilterBar } from '@/components/layout/FilterBar';
+import { CommandPalette } from '@/components/ui/CommandPalette';
+import { FilterUrlSync } from '@/components/layout/FilterUrlSync';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-surface-muted">
+      <a href="#main-content" className="skip-to-content">
+        Pular para o conteúdo
+      </a>
+      <Suspense fallback={null}>
+        <FilterUrlSync />
+      </Suspense>
+      <CommandPalette />
       <Sidebar />
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)}>
         <SidebarContent onNavigate={() => setMobileOpen(false)} />
@@ -26,7 +35,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <main className="flex-1 overflow-auto">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto" aria-label="Conteúdo principal">
           <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">{children}</div>
         </main>
       </div>

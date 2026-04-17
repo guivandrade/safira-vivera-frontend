@@ -1,6 +1,7 @@
 'use client';
 
 import { FilterBar } from './FilterBar';
+import { SavedViewsMenu } from './SavedViewsMenu';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 
@@ -24,14 +25,28 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <div className="hidden sm:block">
+        <div className="hidden sm:flex sm:items-center sm:gap-2">
           <FilterBar />
+          <SavedViewsMenu />
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <KbdHint />
         <ThemeToggle />
         <UserMenu />
       </div>
     </header>
+  );
+}
+
+function KbdHint() {
+  return (
+    <span
+      className="hidden items-center gap-1 rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] text-ink-muted lg:inline-flex"
+      title="Paleta de comandos"
+    >
+      <kbd>⌘</kbd>
+      <kbd>K</kbd>
+    </span>
   );
 }
