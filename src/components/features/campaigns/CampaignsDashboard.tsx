@@ -34,18 +34,53 @@ export function CampaignsDashboard() {
   useEffect(() => {
     const success = searchParams.get('success');
     const errorParam = searchParams.get('error');
+
     if (success === 'google_connected') {
       toast.success('Google Ads conectado. Atualizando dados...', { title: 'Conectado' });
       refetch();
-    } else if (errorParam === 'missing_refresh_token') {
-      toast.error(
-        'Revogue o acesso em myaccount.google.com/permissions e tente conectar novamente.',
-        { title: 'Conexão incompleta', duration: 8000 },
-      );
-    } else if (errorParam === 'oauth_denied') {
-      toast.warning('Você cancelou a autorização no Google.', { title: 'Conexão cancelada' });
-    } else if (errorParam && errorParam !== 'period' && errorParam !== 'platform') {
-      toast.error(`Erro na conexão: ${errorParam}`, { title: 'Erro' });
+      return;
+    }
+
+    if (!errorParam) return;
+
+    const errorMap: Record<string, { variant: 'error' | 'warning'; title: string; msg: string; duration?: number }> = {
+      missing_refresh_token: {
+        variant: 'error',
+        title: 'Conexão incompleta',
+        msg: 'Revogue o acesso em myaccount.google.com/permissions e clique em "Conectar" de novo.',
+        duration: 10000,
+      },
+      save_failed: {
+        variant: 'error',
+        title: 'Erro ao salvar',
+        msg: 'Não conseguimos salvar as credenciais. Tente novamente em alguns segundos.',
+      },
+      invalid_state: {
+        variant: 'error',
+        title: 'Sessão expirou',
+        msg: 'O link de autorização expirou. Clique em "Conectar" novamente.',
+      },
+      oauth_denied: {
+        variant: 'warning',
+        title: 'Conexão cancelada',
+        msg: 'Você cancelou a autorização no Google.',
+      },
+      no_code: {
+        variant: 'error',
+        title: 'Retorno inválido do Google',
+        msg: 'A resposta do Google veio sem o código de autorização. Tente conectar novamente.',
+      },
+      oauth_failed: {
+        variant: 'error',
+        title: 'Falha na conexão',
+        msg: 'Erro genérico no fluxo OAuth. Se persistir, verifique as permissões na sua conta Google.',
+      },
+    };
+
+    const mapped = errorMap[errorParam];
+    if (mapped) {
+      const fn = mapped.variant === 'error' ? toast.error : toast.warning;
+      fn(mapped.msg, { title: mapped.title, duration: mapped.duration });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

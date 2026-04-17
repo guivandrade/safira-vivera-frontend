@@ -82,6 +82,16 @@ const items: NavItem[] = [
     ),
   },
   {
+    href: '/comparar',
+    label: 'Comparar',
+    group: 'primary',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 3v18M16 3v18M3 8h10M11 16h10" />
+      </svg>
+    ),
+  },
+  {
     href: '/integracoes',
     label: 'Integrações',
     group: 'secondary',
