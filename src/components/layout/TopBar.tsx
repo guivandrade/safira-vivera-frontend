@@ -1,7 +1,5 @@
 'use client';
 
-import { FilterBar } from './FilterBar';
-import { SavedViewsMenu } from './SavedViewsMenu';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 
@@ -25,10 +23,6 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <div className="hidden sm:flex sm:items-center sm:gap-2">
-          <FilterBar />
-          <SavedViewsMenu />
-        </div>
       </div>
       <div className="flex items-center gap-2">
         <KbdHint />

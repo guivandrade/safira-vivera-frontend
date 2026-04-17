@@ -16,7 +16,7 @@ export function FilterBar({ showPlatform = true, lockedPlatform }: FilterBarProp
   const setPlatform = useFiltersStore((s) => s.setPlatform);
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex items-center gap-3 whitespace-nowrap">
       <DateRangePicker value={period} onChange={setPeriod} />
       {showPlatform && (
         <PlatformTabs
