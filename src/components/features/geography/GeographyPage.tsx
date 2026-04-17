@@ -94,7 +94,7 @@ export function GeographyPage() {
       align: 'right',
       sortable: true,
       sortValue: (r) => r.spend,
-      render: (r) => formatCurrency(r.spend, 0),
+      render: (r) => formatCurrency(r.spend),
     },
     {
       key: 'cpa',
@@ -103,7 +103,7 @@ export function GeographyPage() {
       sortable: true,
       sortValue: (r) => safeDiv(r.spend, r.conversions),
       render: (r) =>
-        r.conversions > 0 ? formatCurrency(safeDiv(r.spend, r.conversions), 0) : '—',
+        r.conversions > 0 ? formatCurrency(safeDiv(r.spend, r.conversions)) : '—',
     },
   ];
 
@@ -128,7 +128,7 @@ export function GeographyPage() {
         <KpiCard metric={{ key: 'bairros', label: 'Bairros ativos', tooltip: 'Bairros que geraram ao menos 1 busca no período.', formatted: formatNumber(neighborhoods.length), delta: null }} />
         <KpiCard metric={{ key: 'searches', label: 'Buscas locais', tooltip: 'Buscas no Google vindas de dispositivos dentro do raio.', formatted: formatNumber(totals.searches), delta: null }} />
         <KpiCard metric={{ key: 'conv', label: 'Conversões', tooltip: 'Conversões atribuídas a usuários dentro do raio.', formatted: formatNumber(totals.conversions), delta: null }} />
-        <KpiCard metric={{ key: 'spend', label: 'Investimento', tooltip: 'Investimento total em campanhas locais.', formatted: formatCurrency(totals.spend, 0), delta: null }} />
+        <KpiCard metric={{ key: 'spend', label: 'Investimento', tooltip: 'Investimento total em campanhas locais.', formatted: formatCurrency(totals.spend), delta: null }} />
       </div>
 
       {/* Mapa + Top bairros */}

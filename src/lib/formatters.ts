@@ -1,4 +1,4 @@
-export function formatCurrency(value: number, fractionDigits = 0): string {
+export function formatCurrency(value: number, fractionDigits = 2): string {
   if (!isFinite(value)) return '—';
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
