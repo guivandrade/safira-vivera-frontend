@@ -120,14 +120,16 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
 
 export function KpiCard({ metric }: { metric: KpiMetric }) {
   return (
-    <Card padding="md">
+    <Card padding="md" className="min-w-0 overflow-hidden">
       <div className="flex items-center gap-1.5">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
+        <p className="truncate text-[11px] font-medium uppercase tracking-wider text-ink-muted">
           {metric.label}
         </p>
         <InfoIcon tooltip={metric.tooltip} label={metric.label} />
       </div>
-      <p className="mt-1.5 text-2xl font-semibold tabular-nums text-ink">{metric.formatted}</p>
+      <p className="mt-1.5 truncate text-xl font-semibold tabular-nums text-ink xl:text-2xl">
+        {metric.formatted}
+      </p>
       <DeltaIndicator delta={metric.delta} inverted={metric.deltaInverted} />
     </Card>
   );
@@ -158,7 +160,7 @@ export function DeltaIndicator({
   const formatted = `${Math.abs(delta).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 
   return (
-    <p className={cn('mt-1 text-[11px] font-medium tabular-nums', color)}>
+    <p className={cn('mt-1 truncate text-[11px] font-medium tabular-nums', color)} title={`${arrow} ${formatted} ${suffix}`}>
       {arrow} {formatted} <span className="font-normal text-ink-subtle">{suffix}</span>
     </p>
   );
