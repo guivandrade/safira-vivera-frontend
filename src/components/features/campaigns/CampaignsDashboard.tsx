@@ -24,6 +24,8 @@ export function CampaignsDashboard() {
   const platform = useFiltersStore((s) => s.platform);
   const monthFilter = useFiltersStore((s) => s.monthFilter);
   const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+  const setIncludeBoosts = useFiltersStore((s) => s.setIncludeBoosts);
   const { data: googleStatus } = useGoogleAdsStatus();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -136,7 +138,7 @@ export function CampaignsDashboard() {
             Todas as campanhas ativas + histórico — scan por performance e investimento.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <FreshnessIndicator updatedAt={dataUpdatedAt} isFetching={isFetching} />
           <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted">
             <input
@@ -146,6 +148,18 @@ export function CampaignsDashboard() {
               className="h-3.5 w-3.5 accent-accent"
             />
             Comparar período anterior
+          </label>
+          <label
+            className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted"
+            title="Posts turbinados via Meta Business Suite geram spend sem conversão trackada. Desligado por default pra não inflar o CPA."
+          >
+            <input
+              type="checkbox"
+              checked={includeBoosts}
+              onChange={(e) => setIncludeBoosts(e.target.checked)}
+              className="h-3.5 w-3.5 accent-accent"
+            />
+            Incluir posts turbinados
           </label>
           <Button
             variant="secondary"

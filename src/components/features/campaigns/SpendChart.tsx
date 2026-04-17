@@ -132,8 +132,10 @@ export function SpendChart({ data, platformFilter = 'all', onBarClick, showCompa
 
 function buildDescription(platform: string, showComparison: boolean, clickable: boolean): string {
   const base = platform === 'all'
-    ? 'Mês a mês — soma Meta + Google'
-    : `Mês a mês — ${platform === 'meta' ? 'Meta Ads' : 'Google Ads'}`;
+    ? 'Mês a mês — soma Meta + Google (inclui posts turbinados)'
+    : platform === 'meta'
+      ? 'Mês a mês — Meta Ads (inclui posts turbinados)'
+      : 'Mês a mês — Google Ads';
   const parts = [base];
   if (showComparison) parts.push('linha = período anterior');
   if (clickable) parts.push('clique pra filtrar');

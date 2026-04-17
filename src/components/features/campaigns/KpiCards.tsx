@@ -12,6 +12,7 @@ import {
   percentDelta,
   safeDiv,
 } from '@/lib/formatters';
+import { useFiltersStore } from '@/stores/filters-store';
 
 interface KpiCardsProps {
   data: CampaignInsightsResponse;
@@ -28,36 +29,41 @@ export interface KpiMetric {
 }
 
 export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
+
   const metrics = useMemo<KpiMetric[]>(() => {
-    const monthly = data.monthlyData;
+    // KPIs agregam a partir de campaigns[] (não monthlyData) pra permitir
+    // filtrar por `objective`. Boosts (Meta Business Suite) têm spend sem
+    // conversão — incluí-los inflaria o CPA e confundiria a Vera.
+    const filteredCampaigns = data.campaigns.filter((c) => {
+      if (platformFilter !== 'all' && c.provider !== platformFilter) return false;
+      if (!includeBoosts && c.objective === 'boost') return false;
+      return true;
+    });
 
-    // Aggregate spend/conversions from monthly (supports platform filter)
-    const totalSpend = monthly.reduce((sum, m) => {
-      if (platformFilter === 'meta') return sum + m.meta.spend;
-      if (platformFilter === 'google') return sum + m.google.spend;
-      return sum + m.totalSpend;
-    }, 0);
-    const totalConversions = monthly.reduce((sum, m) => {
-      if (platformFilter === 'meta') return sum + m.meta.conversions;
-      if (platformFilter === 'google') return sum + m.google.conversions;
-      return sum + m.totalConversions;
-    }, 0);
-
-    // Clicks + impressions come from campaigns list
-    const filteredCampaigns = data.campaigns.filter((c) =>
-      platformFilter === 'all' ? true : c.provider === platformFilter,
-    );
+    const totalSpend = filteredCampaigns.reduce((sum, c) => sum + c.spend, 0);
+    const totalConversions = filteredCampaigns.reduce((sum, c) => sum + c.conversions, 0);
     const totalClicks = filteredCampaigns.reduce((sum, c) => sum + c.clicks, 0);
     const totalImpressions = filteredCampaigns.reduce((sum, c) => sum + c.impressions, 0);
 
     const cpa = safeDiv(totalSpend, totalConversions);
     const ctr = safeDiv(totalClicks, totalImpressions) * 100;
 
-    // Delta vs previous month
+    // Delta vs período anterior — usa `previousPeriod` do backend (já sem
+    // boosts por default) quando disponível; senão, cai no último mês do
+    // monthlyData como heurística.
     let spendDelta: number | null = null;
     let convDelta: number | null = null;
     let cpaDelta: number | null = null;
-    if (monthly.length >= 2) {
+
+    if (data.previousPeriod && platformFilter === 'all') {
+      const prev = data.previousPeriod;
+      spendDelta = percentDelta(totalSpend, prev.totalSpend);
+      convDelta = percentDelta(totalConversions, prev.totalConversions);
+      const prevCpa = safeDiv(prev.totalSpend, prev.totalConversions);
+      cpaDelta = percentDelta(cpa, prevCpa);
+    } else if (data.monthlyData.length >= 2) {
+      const monthly = data.monthlyData;
       const last = monthly[monthly.length - 1];
       const prev = monthly[monthly.length - 2];
       const lastSpend = platformFilter === 'meta' ? last.meta.spend : platformFilter === 'google' ? last.google.spend : last.totalSpend;
@@ -73,21 +79,27 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
       {
         key: 'spend',
         label: 'Investimento',
-        tooltip: 'Total gasto em mídia paga no período selecionado.',
+        tooltip:
+          'Total gasto em mídia paga no período. ' +
+          (includeBoosts ? 'Inclui posts turbinados do Meta Business Suite.' : 'Posts turbinados (Meta Business Suite) excluídos.'),
         formatted: formatCurrency(totalSpend),
         delta: spendDelta,
       },
       {
         key: 'conversions',
         label: 'Conversões',
-        tooltip: 'Total de conversões no período.',
+        tooltip: 'Total de conversões no período. Posts turbinados não geram conversão trackada.',
         formatted: formatNumber(totalConversions),
         delta: convDelta,
       },
       {
         key: 'cpa',
         label: 'CPA médio',
-        tooltip: 'Custo por Aquisição: investimento ÷ conversões. Quanto menor, mais eficiente.',
+        tooltip:
+          'Custo por Aquisição: investimento ÷ conversões. ' +
+          (includeBoosts
+            ? 'Inflado por posts turbinados (spend sem conversão).'
+            : 'Posts turbinados excluídos pra não inflar.'),
         formatted: totalConversions > 0 ? formatCurrency(cpa, 2) : '—',
         delta: cpaDelta,
         deltaInverted: true,
@@ -107,7 +119,7 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
         delta: null,
       },
     ];
-  }, [data, platformFilter]);
+  }, [data, platformFilter, includeBoosts]);
 
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
