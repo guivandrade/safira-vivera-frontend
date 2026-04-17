@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
+import { ApiErrorsBanner } from '@/components/ui/ApiErrorsBanner';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import { TableSkeleton, KpiCardsSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
@@ -114,16 +115,7 @@ export function KeywordsPage() {
         </div>
       )}
 
-      {data?.errors && data.errors.length > 0 && (
-        <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-2.5 text-sm">
-          <p className="font-medium text-warning">Alguns dados podem estar incompletos</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-ink-muted">
-            {data.errors.map((err, idx) => (
-              <li key={idx}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <ApiErrorsBanner errors={data?.errors} />
 
       {isLoading ? (
         <>

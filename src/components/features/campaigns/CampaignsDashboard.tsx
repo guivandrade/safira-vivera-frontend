@@ -18,6 +18,7 @@ import { EmptyStateCTA } from './EmptyStateCTA';
 import { AnnotationsPanel } from './AnnotationsPanel';
 import { Button } from '@/components/ui/Button';
 import { FreshnessIndicator } from '@/components/ui/FreshnessIndicator';
+import { ApiErrorsBanner } from '@/components/ui/ApiErrorsBanner';
 
 export function CampaignsDashboard() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useCampaignInsights();
@@ -194,16 +195,7 @@ export function CampaignsDashboard() {
         </div>
       )}
 
-      {data?.errors && data.errors.length > 0 && (
-        <div className="rounded-md border border-warning/30 bg-warning/5 px-4 py-2.5 text-sm">
-          <p className="font-medium text-warning">Alguns dados podem estar incompletos</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-ink-muted">
-            {data.errors.map((err, idx) => (
-              <li key={idx}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <ApiErrorsBanner errors={data?.errors} />
 
       {error && (
         <div className="rounded-md border border-danger/30 bg-danger/5 p-4">
