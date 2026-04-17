@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
+import { resolveRange } from '@/lib/period';
 
-export type PresetKey = 'this-month' | 'last-90d' | 'last-180d' | 'this-year' | 'custom';
+export type PresetKey = 'last-7d' | 'this-month' | 'last-90d' | 'last-180d' | 'this-year' | 'custom';
 
 export interface DateRangeValue {
   preset: PresetKey;
@@ -19,11 +20,37 @@ interface DateRangePickerProps {
 }
 
 const presets: { key: PresetKey; label: string }[] = [
+  { key: 'last-7d', label: 'Últimos 7 dias' },
   { key: 'this-month', label: 'Este mês' },
   { key: 'last-90d', label: 'Últimos 90 dias' },
   { key: 'last-180d', label: 'Últimos 180 dias' },
   { key: 'this-year', label: 'Este ano' },
 ];
+
+function formatDayMonth(iso: string): string {
+  const parts = iso.split('-');
+  return `${parts[2]}/${parts[1]}`;
+}
+
+function formatDayMonthYear(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+/**
+ * Label discreto com o range resolvido. Quando preset != custom, mostra
+ * o range como sub-info pra Vera saber exatamente o que o preset significa
+ * ("Este mês" pode ser 01/04–17/04 ou 01/04–30/04, depende do dia).
+ */
+function formatResolvedRange(value: DateRangeValue): string {
+  const { from, to } = resolveRange(value);
+  // Mesmo ano: elide repetido ("01/04 – 17/04/2026")
+  const sameYear = from.slice(0, 4) === to.slice(0, 4);
+  if (sameYear) {
+    return `${formatDayMonth(from)} – ${formatDayMonthYear(to)}`;
+  }
+  return `${formatDayMonthYear(from)} – ${formatDayMonthYear(to)}`;
+}
 
 function parseIsoDateLocal(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
@@ -59,10 +86,9 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     setOpen(false);
   };
 
-  const customLabel =
-    value.preset === 'custom' && value.from && value.to
-      ? `${parseIsoDateLocal(value.from).toLocaleDateString('pt-BR')} – ${parseIsoDateLocal(value.to).toLocaleDateString('pt-BR')}`
-      : 'Customizado';
+  // Label do botão custom: mostra o range RESOLVIDO (independe de preset).
+  // Vera sabe exatamente qual janela está aplicada sem precisar abrir o modal.
+  const resolvedRangeLabel = formatResolvedRange(value);
 
   return (
     <div className="inline-flex items-center gap-2">
@@ -101,7 +127,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            {customLabel}
+            <span className="tabular-nums">{resolvedRangeLabel}</span>
           </button>
 
           {open && (

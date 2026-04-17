@@ -15,6 +15,13 @@ export function resolveRange(period: DateRangeValue): { from: string; to: string
   }
 
   switch (period.preset) {
+    case 'last-7d': {
+      // Inclui hoje — "últimos 7 dias" = hoje + 6 dias atrás (total 7).
+      // Matches convenção do Meta/Google Ads Manager.
+      const from = new Date(today);
+      from.setDate(from.getDate() - 6);
+      return { from: toIsoDate(from), to: toIsoDate(today) };
+    }
     case 'this-month': {
       const from = new Date(today.getFullYear(), today.getMonth(), 1);
       return { from: toIsoDate(from), to: toIsoDate(today) };
