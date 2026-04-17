@@ -19,22 +19,23 @@ import { FreshnessIndicator } from '@/components/ui/FreshnessIndicator';
 export function DashboardOverview() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
   const setMonthFilter = useFiltersStore((s) => s.setMonthFilter);
   const { layout } = useDashboardLayout();
   const activeWidgets = LAYOUTS[layout].widgets;
 
   const { funnelStages, hasAnyData } = useMemo(() => {
     if (!data) return { funnelStages: [], hasAnyData: false };
-    const filteredCampaigns = data.campaigns.filter((c) =>
-      platform === 'all' ? true : c.provider === platform,
-    );
+    // Mesmo filtro aplicado em KpiCards — exclui boost (Meta Business Suite)
+    // pra não inflar impressions/clicks e distorcer a taxa de conversão.
+    const filteredCampaigns = data.campaigns.filter((c) => {
+      if (platform !== 'all' && c.provider !== platform) return false;
+      if (!includeBoosts && c.objective === 'boost') return false;
+      return true;
+    });
     const impressions = filteredCampaigns.reduce((sum, c) => sum + c.impressions, 0);
     const clicks = filteredCampaigns.reduce((sum, c) => sum + c.clicks, 0);
-    const conversions = data.monthlyData.reduce((sum, m) => {
-      if (platform === 'meta') return sum + m.meta.conversions;
-      if (platform === 'google') return sum + m.google.conversions;
-      return sum + m.totalConversions;
-    }, 0);
+    const conversions = filteredCampaigns.reduce((sum, c) => sum + c.conversions, 0);
     return {
       funnelStages: [
         { key: 'impressions', label: 'Impressões', value: impressions },
@@ -43,15 +44,17 @@ export function DashboardOverview() {
       ],
       hasAnyData: data.monthlyData.length > 0,
     };
-  }, [data, platform]);
+  }, [data, platform, includeBoosts]);
 
   const topCampaigns = useMemo(() => {
     if (!data) return [];
-    const filtered = data.campaigns.filter((c) =>
-      platform === 'all' ? true : c.provider === platform,
-    );
+    const filtered = data.campaigns.filter((c) => {
+      if (platform !== 'all' && c.provider !== platform) return false;
+      if (!includeBoosts && c.objective === 'boost') return false;
+      return true;
+    });
     return [...filtered].sort((a, b) => b.spend - a.spend).slice(0, 5);
-  }, [data, platform]);
+  }, [data, platform, includeBoosts]);
 
   const handleBarClick = (monthIso: string) => {
     setMonthFilter(monthIso);
@@ -121,8 +124,20 @@ export function DashboardOverview() {
             Os números do negócio em 15 segundos — use os filtros no topo.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <FreshnessIndicator updatedAt={dataUpdatedAt} isFetching={isFetching} onRefresh={() => refetch()} />
+          <label
+            className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-ink-muted"
+            title="Posts turbinados via Meta Business Suite geram spend sem conversão trackada. Desligado por default pra não inflar o CPA."
+          >
+            <input
+              type="checkbox"
+              checked={includeBoosts}
+              onChange={(e) => useFiltersStore.getState().setIncludeBoosts(e.target.checked)}
+              className="h-3.5 w-3.5 accent-accent"
+            />
+            Incluir posts turbinados
+          </label>
           <LayoutSwitcher />
         </div>
       </div>

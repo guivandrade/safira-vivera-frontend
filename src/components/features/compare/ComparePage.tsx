@@ -5,6 +5,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { KpiCardsSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
 import { useInsightsRange } from '@/hooks/use-insights-range';
+import { useFiltersStore } from '@/stores/filters-store';
 import { CampaignInsightsResponse } from '@/types/campaigns';
 import { formatCurrency, formatNumber, formatPercent, percentDelta, safeDiv } from '@/lib/formatters';
 import { cn } from '@/lib/cn';
@@ -30,12 +31,13 @@ function defaultRangeB(): Range {
 export function ComparePage() {
   const [rangeA, setRangeA] = useState<Range>(defaultRangeA);
   const [rangeB, setRangeB] = useState<Range>(defaultRangeB);
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
 
   const { data: dataA, isLoading: loadingA } = useInsightsRange(rangeA.from, rangeA.to);
   const { data: dataB, isLoading: loadingB } = useInsightsRange(rangeB.from, rangeB.to);
 
-  const metricsA = useMemo(() => computeMetrics(dataA), [dataA]);
-  const metricsB = useMemo(() => computeMetrics(dataB), [dataB]);
+  const metricsA = useMemo(() => computeMetrics(dataA, includeBoosts), [dataA, includeBoosts]);
+  const metricsB = useMemo(() => computeMetrics(dataB, includeBoosts), [dataB, includeBoosts]);
 
   return (
     <div className="space-y-6">
@@ -89,12 +91,18 @@ interface Metrics {
   ctr: number;
 }
 
-function computeMetrics(data: CampaignInsightsResponse | undefined): Metrics {
+function computeMetrics(
+  data: CampaignInsightsResponse | undefined,
+  includeBoosts: boolean,
+): Metrics {
   if (!data) return { spend: 0, conversions: 0, clicks: 0, impressions: 0, cpa: 0, ctr: 0 };
-  const spend = data.monthlyData.reduce((s, m) => s + m.totalSpend, 0);
-  const conversions = data.monthlyData.reduce((s, m) => s + m.totalConversions, 0);
-  const clicks = data.campaigns.reduce((s, c) => s + c.clicks, 0);
-  const impressions = data.campaigns.reduce((s, c) => s + c.impressions, 0);
+  // Agrega a partir de campaigns[] filtrando boosts (Meta Business Suite)
+  // pra consistência com os KPIs do resto do app.
+  const filtered = data.campaigns.filter((c) => includeBoosts || c.objective !== 'boost');
+  const spend = filtered.reduce((s, c) => s + c.spend, 0);
+  const conversions = filtered.reduce((s, c) => s + c.conversions, 0);
+  const clicks = filtered.reduce((s, c) => s + c.clicks, 0);
+  const impressions = filtered.reduce((s, c) => s + c.impressions, 0);
   return {
     spend,
     conversions,

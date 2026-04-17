@@ -12,16 +12,21 @@ import { formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
 export function FunnelPage() {
   const { data, isLoading } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
+  const includeBoosts = useFiltersStore((s) => s.includeBoosts);
 
   const stages = useMemo(() => {
     if (!data) return { global: [], meta: [], google: [] };
 
     const sumByProvider = (p: 'meta' | 'google') => {
-      const camps = data.campaigns.filter((c) => c.provider === p);
+      const camps = data.campaigns.filter((c) => {
+        if (c.provider !== p) return false;
+        if (!includeBoosts && c.objective === 'boost') return false;
+        return true;
+      });
       return {
         impressions: camps.reduce((s, c) => s + c.impressions, 0),
         clicks: camps.reduce((s, c) => s + c.clicks, 0),
-        conversions: data.monthlyData.reduce((s, m) => s + m[p].conversions, 0),
+        conversions: camps.reduce((s, c) => s + c.conversions, 0),
       };
     };
 
@@ -40,7 +45,7 @@ export function FunnelPage() {
     ];
 
     return { global: toStages(global), meta: toStages(meta), google: toStages(google) };
-  }, [data]);
+  }, [data, includeBoosts]);
 
   const displayed =
     platform === 'meta' ? stages.meta : platform === 'google' ? stages.google : stages.global;
