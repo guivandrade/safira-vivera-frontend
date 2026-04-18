@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { resolveRange } from '@/lib/period';
 
-export type PresetKey = 'last-7d' | 'this-month' | 'last-90d' | 'last-180d' | 'this-year' | 'custom';
+export type PresetKey = 'today' | 'last-7d' | 'this-month' | 'last-90d' | 'last-180d' | 'this-year' | 'custom';
 
 export interface DateRangeValue {
   preset: PresetKey;
@@ -20,6 +20,7 @@ interface DateRangePickerProps {
 }
 
 const presets: { key: PresetKey; label: string }[] = [
+  { key: 'today', label: 'Hoje' },
   { key: 'last-7d', label: 'Últimos 7 dias' },
   { key: 'this-month', label: 'Este mês' },
   { key: 'last-90d', label: 'Últimos 90 dias' },

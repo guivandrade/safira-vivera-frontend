@@ -33,6 +33,10 @@ export function resolveRange(period: DateRangeValue): { from: string; to: string
   }
 
   switch (period.preset) {
+    case 'today':
+      // Exceção: inclui só o dia corrente. Usado pra acompanhamento em tempo
+      // real durante o dia (spend rolando, conversões chegando).
+      return { from: toIsoDate(today), to: toIsoDate(today) };
     case 'last-7d':
       return lastNDaysRange(7, today);
     case 'last-90d':
