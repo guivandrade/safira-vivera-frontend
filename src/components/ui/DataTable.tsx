@@ -20,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/cn';
 import { InfoIcon } from './InfoIcon';
 import { useColumnOrder } from '@/hooks/use-preferences';
+import { storageKeyFor } from '@/lib/storage-keys';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -113,7 +114,7 @@ export function DataTable<T>({
   useEffect(() => {
     if (!columnStorageKey) return;
     try {
-      const raw = localStorage.getItem(`safira-cols-${columnStorageKey}`);
+      const raw = localStorage.getItem(storageKeyFor.columnHidden(columnStorageKey));
       if (raw) setHiddenCols(new Set(JSON.parse(raw)));
     } catch {
       // ignore
@@ -122,7 +123,10 @@ export function DataTable<T>({
 
   useEffect(() => {
     if (!columnStorageKey) return;
-    localStorage.setItem(`safira-cols-${columnStorageKey}`, JSON.stringify(Array.from(hiddenCols)));
+    localStorage.setItem(
+      storageKeyFor.columnHidden(columnStorageKey),
+      JSON.stringify(Array.from(hiddenCols)),
+    );
   }, [hiddenCols, columnStorageKey]);
 
   useEffect(() => {

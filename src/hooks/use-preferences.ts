@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
+import { storageKeyFor } from '@/lib/storage-keys';
 
 /**
  * Preferences arbitrárias do usuário persistidas no backend.
@@ -67,7 +68,7 @@ export function useColumnOrder(tableKey: string, defaultOrder: string[]): {
   const { data: prefs } = usePreferences();
   const update = useUpdatePreferences();
 
-  const lsKey = `safira-col-order-${tableKey}`;
+  const lsKey = storageKeyFor.columnOrder(tableKey);
 
   // Hydrate SSR-safe: lê localStorage só no client, depois do mount.
   // Primeiro render usa defaultOrder (evita hydration mismatch), então

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCampaignInsights } from '@/hooks/use-campaign-insights';
 import { useFiltersStore } from '@/stores/filters-store';
 import { useDashboardLayout, LAYOUTS, WidgetKey } from '@/stores/dashboard-layout-store';
@@ -17,6 +18,7 @@ import { LayoutSwitcher } from './LayoutSwitcher';
 import { FreshnessIndicator } from '@/components/ui/FreshnessIndicator';
 
 export function DashboardOverview() {
+  const router = useRouter();
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useCampaignInsights();
   const platform = useFiltersStore((s) => s.platform);
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
@@ -53,6 +55,7 @@ export function DashboardOverview() {
     const filtered = data.campaigns.filter((c) => {
       if (platform !== 'all' && c.provider !== platform) return false;
       if (!includeBoosts && c.objective === 'boost') return false;
+      if (!includeInactive && c.status && c.status !== 'ACTIVE') return false;
       return true;
     });
     return [...filtered].sort((a, b) => b.spend - a.spend).slice(0, 5);
@@ -60,7 +63,7 @@ export function DashboardOverview() {
 
   const handleBarClick = (monthIso: string) => {
     setMonthFilter(monthIso);
-    window.location.href = '/campanhas';
+    router.push('/campanhas');
   };
 
   if (isLoading) return <DashboardOverviewSkeleton />;

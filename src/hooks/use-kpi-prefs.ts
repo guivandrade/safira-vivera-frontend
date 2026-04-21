@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { storageKeyFor } from '@/lib/storage-keys';
 
 /**
  * Persiste ordem e visibilidade de uma lista (ex: KPI cards do dashboard)
@@ -18,8 +19,8 @@ export function useKpiPrefs(
   toggleHidden: (key: string) => void;
   reset: () => void;
 } {
-  const orderKey = `safira-kpi-order-${storageKey}`;
-  const hiddenKey = `safira-kpi-hidden-${storageKey}`;
+  const orderKey = storageKeyFor.kpiOrder(storageKey);
+  const hiddenKey = storageKeyFor.kpiHidden(storageKey);
 
   const [order, setOrderState] = useState<string[]>(defaultOrder);
   const [hidden, setHiddenState] = useState<Set<string>>(new Set());
