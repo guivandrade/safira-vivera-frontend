@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
 import { ApiErrorsBanner } from '@/components/ui/ApiErrorsBanner';
+import { LoadMoreButton } from '@/components/ui/LoadMoreButton';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import {
@@ -38,14 +39,23 @@ const SORT_OPTIONS: { key: SortKey; label: string; value: (r: CreativeRow) => nu
 export function CreativesPage() {
   const [mode, setMode] = useState<'gallery' | 'table'>('gallery');
   const [sortBy, setSortBy] = useState<SortKey>('conversions');
-  const { data, isLoading, error } = useCreatives();
+  const {
+    rows: allRows,
+    errors,
+    total,
+    hasMore,
+    loadMore,
+    isLoading,
+    isLoadingMore,
+    error,
+  } = useCreatives();
 
   // Página é Meta Ads puro. Se o backend retornar `provider: 'google'` (text
   // ads de Search), filtramos aqui — Google tem sua própria página
   // (/palavras-chave) e mistura confundiria a leitura.
   const rows = useMemo(
-    () => (data?.creatives ?? []).filter((c) => c.provider === 'meta'),
-    [data?.creatives],
+    () => allRows.filter((c) => c.provider === 'meta'),
+    [allRows],
   );
 
   // Totais precisam ser recalculados dos `rows` filtrados, não reutilizar
@@ -217,7 +227,7 @@ export function CreativesPage() {
         </div>
       )}
 
-      <ApiErrorsBanner errors={data?.errors} />
+      <ApiErrorsBanner errors={errors} />
 
       {isLoading ? (
         <>
@@ -271,6 +281,15 @@ export function CreativesPage() {
               columnStorageKey="creatives"
             />
           )}
+
+          <LoadMoreButton
+            loaded={allRows.length}
+            total={total}
+            hasMore={hasMore}
+            isLoading={isLoadingMore}
+            onClick={loadMore}
+            label="criativos"
+          />
         </>
       ) : (
         <EmptyStatePlaceholder

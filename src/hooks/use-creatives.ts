@@ -1,25 +1,63 @@
 'use client';
 
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import type { CreativesResponse } from '@/types/api';
+import type { CreativeRow, CreativeTotals, CreativesResponse } from '@/types/api';
 import { useFiltersStore } from '@/stores/filters-store';
 import { resolveRange } from '@/lib/period';
+import { useResetOnInvalidCursor } from './use-reset-on-invalid-cursor';
 
-export function useCreatives(): UseQueryResult<CreativesResponse, Error> {
+const PAGE_SIZE = 200;
+const ZERO_TOTALS: CreativeTotals = { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
+
+export interface UseCreativesResult {
+  rows: CreativeRow[];
+  totals: CreativeTotals;
+  errors: string[] | undefined;
+  total: number | null;
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  error: Error | null;
+}
+
+export function useCreatives(): UseCreativesResult {
   const period = useFiltersStore((s) => s.period);
   const { from, to } = resolveRange(period);
+  const queryKey = ['creatives', from, to] as const;
 
-  return useQuery({
-    queryKey: ['creatives', from, to],
-    queryFn: async () => {
+  const query = useInfiniteQuery({
+    queryKey,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams({ from, to, pageSize: String(PAGE_SIZE) });
+      if (pageParam) params.set('cursor', pageParam);
       const res = await apiClient.get<CreativesResponse>(
-        `/campaigns/creatives?from=${from}&to=${to}&limit=200`,
+        `/campaigns/creatives?${params.toString()}`,
       );
       return res.data;
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.pageInfo?.nextCursor ?? undefined,
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 2,
   });
+
+  useResetOnInvalidCursor(query.error, queryKey);
+
+  const pages = query.data?.pages ?? [];
+  const errors = pages.flatMap((p) => p.errors ?? []);
+
+  return {
+    rows: pages.flatMap((p) => p.creatives),
+    totals: pages[0]?.totals ?? ZERO_TOTALS,
+    errors: errors.length ? errors : undefined,
+    total: pages[0]?.pageInfo?.total ?? null,
+    hasMore: !!query.hasNextPage,
+    loadMore: () => void query.fetchNextPage(),
+    isLoading: query.isLoading,
+    isLoadingMore: query.isFetchingNextPage,
+    error: query.error,
+  };
 }

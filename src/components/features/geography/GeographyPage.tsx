@@ -6,6 +6,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
 import { ApiErrorsBanner } from '@/components/ui/ApiErrorsBanner';
+import { LoadMoreButton } from '@/components/ui/LoadMoreButton';
 import { Button } from '@/components/ui/Button';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
@@ -25,15 +26,28 @@ export function GeographyPage() {
   const { data: clinicData, isLoading: clinicLoading } = useClinic();
   const clinicConfigured = isClinicConfigured(clinicData);
 
-  const { data: geoData, isLoading: geoLoading, error: geoError } = useLocalGeography({
-    enabled: clinicConfigured,
-  });
+  const {
+    rows: neighborhoods,
+    clinic,
+    totals,
+    errors: geoErrors,
+    total: totalNeighborhoods,
+    hasMore,
+    loadMore,
+    isLoading: geoLoading,
+    isLoadingMore,
+    error: geoError,
+  } = useLocalGeography({ enabled: clinicConfigured });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { data: queriesData } = useQueriesByCity(selectedId);
+  const {
+    rows: cityQueries,
+    total: totalCityQueries,
+    hasMore: hasMoreQueries,
+    loadMore: loadMoreQueries,
+    isLoadingMore: isLoadingMoreQueries,
+  } = useQueriesByCity(selectedId);
 
-  const neighborhoods = geoData?.neighborhoods ?? [];
-  const totals = geoData?.totals ?? { searches: 0, impressions: 0, clicks: 0, conversions: 0, spend: 0 };
   const hasData = neighborhoods.length > 0;
 
   const topByConversions = useMemo(
@@ -146,7 +160,7 @@ export function GeographyPage() {
         </div>
       )}
 
-      <ApiErrorsBanner errors={geoData?.errors} />
+      <ApiErrorsBanner errors={geoErrors} />
 
       {geoLoading || clinicLoading ? (
         <>
@@ -154,10 +168,10 @@ export function GeographyPage() {
           <div className="h-[440px] animate-pulse rounded-lg border border-line bg-surface-subtle" />
           <TableSkeleton />
         </>
-      ) : hasData && geoData ? (
+      ) : hasData && clinic ? (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <KpiCard metric={{ key: 'bairros', label: 'Bairros ativos', tooltip: 'Bairros que geraram ao menos 1 busca no período.', formatted: formatNumber(neighborhoods.length), delta: null }} />
+            <KpiCard metric={{ key: 'bairros', label: 'Bairros ativos', tooltip: 'Bairros que geraram ao menos 1 busca no período.', formatted: formatNumber(totalNeighborhoods ?? neighborhoods.length), delta: null }} />
             <KpiCard metric={{ key: 'searches', label: 'Buscas locais', tooltip: 'Buscas no Google vindas de dispositivos dentro do raio.', formatted: formatNumber(totals.searches), delta: null }} />
             <KpiCard metric={{ key: 'conv', label: 'Conversões', tooltip: 'Conversões atribuídas a usuários dentro do raio.', formatted: formatNumber(totals.conversions), delta: null }} />
             <KpiCard metric={{ key: 'spend', label: 'Investimento', tooltip: 'Investimento total em campanhas locais.', formatted: formatCurrency(totals.spend), delta: null }} />
@@ -166,11 +180,11 @@ export function GeographyPage() {
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
             <Card padding="md">
               <CardHeader
-                title={`Raio de ${geoData.clinic.radiusKm}km`}
-                description={`${geoData.clinic.address} · ${geoData.clinic.city}/${geoData.clinic.state} — clique num bairro para ver buscas`}
+                title={`Raio de ${clinic.radiusKm}km`}
+                description={`${clinic.address} · ${clinic.city}/${clinic.state} — clique num bairro para ver buscas`}
               />
               <LocalRadiusMap
-                clinic={geoData.clinic}
+                clinic={clinic}
                 neighborhoods={neighborhoods}
                 highlightedId={selectedId}
                 onSelect={(id) => setSelectedId((prev) => (prev === id ? null : id))}
@@ -213,13 +227,13 @@ export function GeographyPage() {
                     title={selected.name}
                     description={`${formatNumber(selected.searches)} buscas · ${formatNumber(selected.conversions)} conversões`}
                   />
-                  {queriesData?.queries && queriesData.queries.length > 0 ? (
-                    <div>
-                      <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-ink-muted">
+                  {cityQueries.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
                         O que esta cidade mais busca
                       </p>
                       <ul className="space-y-1.5">
-                        {queriesData.queries.map((q) => (
+                        {cityQueries.map((q) => (
                           <li
                             key={q.query}
                             className="flex items-center justify-between gap-3 rounded border border-line bg-surface-muted px-2.5 py-1.5 text-xs"
@@ -231,6 +245,14 @@ export function GeographyPage() {
                           </li>
                         ))}
                       </ul>
+                      <LoadMoreButton
+                        loaded={cityQueries.length}
+                        total={totalCityQueries}
+                        hasMore={hasMoreQueries}
+                        isLoading={isLoadingMoreQueries}
+                        onClick={loadMoreQueries}
+                        label="buscas"
+                      />
                     </div>
                   ) : (
                     <p className="text-xs text-ink-muted">
@@ -252,7 +274,7 @@ export function GeographyPage() {
           <div className="space-y-3">
             <CardHeader
               title="Todos os bairros"
-              description={`${neighborhoods.length} bairros no raio`}
+              description={`${formatNumber(totalNeighborhoods ?? neighborhoods.length)} bairros no raio`}
               action={
                 <CsvExportButton
                   rows={neighborhoods}
@@ -281,6 +303,14 @@ export function GeographyPage() {
               onRowClick={(r) => setSelectedId(r.id)}
               stickyHeader
               columnStorageKey="geography"
+            />
+            <LoadMoreButton
+              loaded={neighborhoods.length}
+              total={totalNeighborhoods}
+              hasMore={hasMore}
+              isLoading={isLoadingMore}
+              onClick={loadMore}
+              label="bairros"
             />
           </div>
         </>
