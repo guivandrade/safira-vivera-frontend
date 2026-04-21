@@ -4,6 +4,7 @@ import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 
 interface LoginResponse {
   access_token: string;
@@ -45,9 +46,9 @@ function LoginForm() {
         password,
       });
 
-      localStorage.setItem('access_token', response.data.access_token);
-      localStorage.setItem('refresh_token', response.data.refresh_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.data.access_token);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.data.refresh_token);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.user));
 
       router.push(returnUrl);
     } catch (err: any) {

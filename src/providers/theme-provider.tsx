@@ -9,6 +9,8 @@ import {
   useState,
 } from 'react';
 
+import { STORAGE_KEYS } from '@/lib/storage-keys';
+
 type Theme = 'light' | 'dark';
 
 interface ThemeContextValue {
@@ -19,7 +21,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'safira-theme';
+const STORAGE_KEY = STORAGE_KEYS.THEME;
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;

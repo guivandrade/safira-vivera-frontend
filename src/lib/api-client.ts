@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { STORAGE_KEYS } from './storage-keys';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -12,7 +13,7 @@ export const apiClient: AxiosInstance = axios.create({
 
 // Request interceptor — add token from localStorage/cookie
 apiClient.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) : null;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -26,7 +27,7 @@ let refreshPromise: Promise<string> | null = null;
 
 async function runRefresh(): Promise<string> {
   const refreshToken =
-    typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+    typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) : null;
 
   if (!refreshToken) {
     throw new Error('no_refresh_token');
@@ -36,9 +37,9 @@ async function runRefresh(): Promise<string> {
   const { access_token, refresh_token: newRefreshToken } = response.data;
 
   if (typeof window !== 'undefined') {
-    localStorage.setItem('access_token', access_token);
+    localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access_token);
     if (newRefreshToken) {
-      localStorage.setItem('refresh_token', newRefreshToken);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
     }
   }
 
@@ -69,8 +70,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         }
         redirectToLogin();
         return Promise.reject(refreshError);

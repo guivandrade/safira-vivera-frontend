@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 
 interface StoredUser {
   id?: string;
@@ -31,7 +32,7 @@ export function UserMenu() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('user');
+      const raw = localStorage.getItem(STORAGE_KEYS.USER);
       if (raw) setUser(JSON.parse(raw));
     } catch {
       setUser(null);
@@ -50,9 +51,9 @@ export function UserMenu() {
   }, [open]);
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.USER);
     router.push('/login');
   };
 
