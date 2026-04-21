@@ -8,6 +8,7 @@ import { FilterBar } from '@/components/layout/FilterBar';
 import { SavedViewsMenu } from '@/components/layout/SavedViewsMenu';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { FilterUrlSync } from '@/components/layout/FilterUrlSync';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -45,7 +46,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           className="flex-1 overflow-auto"
           aria-label="Conteúdo principal"
         >
-          <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">{children}</div>
+          <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </div>
         </main>
       </div>
     </div>
