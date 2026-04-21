@@ -2,7 +2,7 @@
 node_modules/
 .pnp
 .pnp.js
-package-lock.json
+# package-lock.json DEVE ser commitado para reprodutibilidade do CI (npm ci)
 yarn.lock
 pnpm-lock.yaml
 
