@@ -295,8 +295,11 @@ function SortableKpiCard({ metric }: { metric: KpiMetric }) {
 }
 
 export function KpiCard({ metric }: { metric: KpiMetric }) {
+  // overflow-visible no Card é essencial: o Tooltip do InfoIcon renderiza
+  // absoluto fora do bounding box do card. truncate nos <p> filhos já cuida
+  // do texto longo.
   return (
-    <Card padding="md" className="min-w-0 overflow-hidden">
+    <Card padding="md" className="min-w-0 overflow-visible">
       <div className="flex items-center gap-1.5">
         <p className="truncate text-[11px] font-medium uppercase tracking-wider text-ink-muted">
           {metric.label}
