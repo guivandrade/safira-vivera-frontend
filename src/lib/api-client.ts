@@ -19,6 +19,32 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Single-flight: compartilha a mesma promise entre 401s concorrentes.
+// Com rotation, se duas requests disparassem refresh ao mesmo tempo, a segunda
+// usaria um refresh_token já revogado pela primeira → 401 e logout forçado.
+let refreshPromise: Promise<string> | null = null;
+
+async function runRefresh(): Promise<string> {
+  const refreshToken =
+    typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+
+  if (!refreshToken) {
+    throw new Error('no_refresh_token');
+  }
+
+  const response = await apiClient.post('/auth/refresh', { refresh_token: refreshToken });
+  const { access_token, refresh_token: newRefreshToken } = response.data;
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('access_token', access_token);
+    if (newRefreshToken) {
+      localStorage.setItem('refresh_token', newRefreshToken);
+    }
+  }
+
+  return access_token;
+}
+
 // Response interceptor — handle 401 and refresh
 apiClient.interceptors.response.use(
   (response) => response,
@@ -31,21 +57,13 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
-      const refreshToken =
-        typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
-
-      if (!refreshToken) {
-        redirectToLogin();
-        return Promise.reject(error);
-      }
-
       try {
-        const response = await apiClient.post('/auth/refresh', { refresh_token: refreshToken });
-        const { access_token } = response.data;
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('access_token', access_token);
+        if (!refreshPromise) {
+          refreshPromise = runRefresh().finally(() => {
+            refreshPromise = null;
+          });
         }
+        const access_token = await refreshPromise;
 
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
