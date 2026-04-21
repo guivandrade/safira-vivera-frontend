@@ -2,6 +2,15 @@
 // safira-vivera-backend/src/modules/**/dto. Quando o backend mudar, esse
 // arquivo precisa mudar junto.
 
+// Cursor pagination — endpoints que retornam listas grandes enviam nextCursor
+// opaco. Omitir o campo equivale a fim da lista. `total` é o total de itens
+// respeitando os filtros atuais (não o número da página atual).
+export interface PageInfo {
+  nextCursor: string | null;
+  hasMore: boolean;
+  total: number;
+}
+
 // Keywords
 export interface KeywordRow {
   id: string;
@@ -26,6 +35,7 @@ export interface KeywordTotals {
 export interface KeywordsResponse {
   keywords: KeywordRow[];
   totals: KeywordTotals;
+  pageInfo?: PageInfo;
   errors?: string[];
 }
 
@@ -55,6 +65,7 @@ export interface CreativeTotals {
 export interface CreativesResponse {
   creatives: CreativeRow[];
   totals: CreativeTotals;
+  pageInfo?: PageInfo;
   errors?: string[];
 }
 
@@ -97,6 +108,7 @@ export interface LocalGeographyResponse {
   clinic: ClinicCenter;
   neighborhoods: NeighborhoodMetrics[];
   totals: GeographyTotals;
+  pageInfo?: PageInfo;
   errors?: string[];
 }
 
@@ -110,6 +122,7 @@ export interface QueryByRow {
 export interface QueriesByCityResponse {
   cityId: string;
   queries: QueryByRow[];
+  pageInfo?: PageInfo;
   errors?: string[];
 }
 

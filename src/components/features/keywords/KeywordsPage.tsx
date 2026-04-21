@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
 import { ApiErrorsBanner } from '@/components/ui/ApiErrorsBanner';
+import { LoadMoreButton } from '@/components/ui/LoadMoreButton';
 import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import { TableSkeleton, KpiCardsSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
@@ -12,10 +13,18 @@ import type { KeywordRow } from '@/types/api';
 import { formatCurrency, formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
 
 export function KeywordsPage() {
-  const { data, isLoading, error } = useKeywords();
+  const {
+    rows,
+    totals,
+    errors,
+    total,
+    hasMore,
+    loadMore,
+    isLoading,
+    isLoadingMore,
+    error,
+  } = useKeywords();
 
-  const rows = data?.keywords ?? [];
-  const totals = data?.totals ?? { impressions: 0, clicks: 0, conversions: 0, spend: 0 };
   const hasData = rows.length > 0;
 
   const columns: DataTableColumn<KeywordRow>[] = useMemo(
@@ -115,7 +124,7 @@ export function KeywordsPage() {
         </div>
       )}
 
-      <ApiErrorsBanner errors={data?.errors} />
+      <ApiErrorsBanner errors={errors} />
 
       {isLoading ? (
         <>
@@ -130,7 +139,7 @@ export function KeywordsPage() {
                 key: 'total',
                 label: 'Total keywords',
                 tooltip: 'Número de palavras-chave ativas no período.',
-                formatted: formatNumber(rows.length),
+                formatted: formatNumber(total ?? rows.length),
                 delta: null,
               }}
             />
@@ -193,6 +202,15 @@ export function KeywordsPage() {
             initialSort={{ key: 'conv', direction: 'desc' }}
             stickyHeader
             columnStorageKey="keywords"
+          />
+
+          <LoadMoreButton
+            loaded={rows.length}
+            total={total}
+            hasMore={hasMore}
+            isLoading={isLoadingMore}
+            onClick={loadMore}
+            label="palavras-chave"
           />
         </>
       ) : (
