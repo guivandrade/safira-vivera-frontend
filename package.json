@@ -8,9 +8,10 @@
     "start": "next start",
     "lint": "next lint --fix",
     "type-check": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.6.1",
     "@vitest/ui": "^1.1.0",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
