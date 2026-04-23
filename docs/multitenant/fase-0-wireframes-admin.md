@@ -1,41 +1,64 @@
-# Fase 0 — Wireframes das telas admin
+# Fase 0 — Wireframes das telas admin (escopo simplificado)
 
 **Referência:** [plano-multitenant-2026-04-23.md](../plano-multitenant-2026-04-23.md)
 
-Wireframes em ASCII art pra validar estrutura antes de codar. Visual final segue design system atual (tokens `bg-surface`, `text-ink`, `accent`, etc.).
+> **Atualizado 2026-04-23 tarde** — CEO simplificou o modelo: cada cliente tem **1 único OWNER**, sem funcionários/membros. As seções de "Membros" e "Permissões" do plano original **foram removidas**. Esta versão reflete o MVP real.
+
+Wireframes em ASCII pra validar estrutura. Visual final segue design system atual (`bg-surface`, `text-ink`, `accent`, etc).
 
 ---
 
-## 1. `/admin/clientes` — Lista de clientes
+## Fluxo geral do admin
+
+```
+/admin/clientes (lista)
+    │
+    ├── [+ Novo cliente] ───► /admin/clientes/novo (criar account + OWNER em 1 tela)
+    │                              │
+    │                              └── Sucesso ───► volta pra lista com banner de sucesso
+    │
+    └── [linha clica] ───► /admin/clientes/[slug] (detalhes)
+                               │
+                               ├── [Entrar como] ───► impersonate + redireciona pra /dashboard
+                               ├── [Resetar senha] ───► gera nova senha, staff copia
+                               ├── [Suspender] ───► PUT status=SUSPENDED
+                               └── [Arquivar] ───► soft delete
+```
+
+Sem tela de Membros. Sem tela de Permissões. Sem invite flow.
+
+---
+
+## 1. `/admin/clientes` — Lista
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [Safira logo]  Clientes                            [Guilherme ▼]   │
+│ [Safira]  Clientes                                  [Guilherme ▼]  │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Clientes ativos                                 [ + Novo cliente ] │
-│  ─────────────                                                      │
+│  Clientes                                       [ + Novo cliente ]  │
 │                                                                     │
-│  [ 🔍 Buscar por nome ou slug ]      Filtro: [Todos ▼] [Status ▼]  │
+│  [ 🔍 Buscar por nome ou slug ]   Status: [Todos ▼]  Nicho: [Todos ▼] │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ Nome              Nicho          Provedores  Últ atividade     │ │
+│  │ Nome             Nicho       Provedores   Status   Últ login    │ │
 │  ├───────────────────────────────────────────────────────────────┤ │
-│  │ Clínica Vívera    Local          Meta,Google  agora             │ │
-│  │ Loja Marina       Ecommerce      Meta         2h atrás          │ │
-│  │ Curso Fabio       Infoproduto    Meta,Google  ontem             │ │
-│  │ ...                                                             │ │
+│  │ Clínica Vívera   Local       Meta,Google  Ativo    agora       │ │
+│  │ Loja Marina      Ecommerce   Meta         Ativo    2h atrás    │ │
+│  │ Curso Fabio      Infoproduto Meta,Google  Pausado  3d atrás    │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                                                                     │
 │  Mostrando 3 de 3         < Anterior  [1]  Próxima >               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Acesso:** só users com flag `safira_staff` em `User.roles`. Qualquer outro user que tentar abrir `/admin/*` é redirecionado pra `/dashboard`.
+Clique na linha → detalhes.
+
+**Acesso:** apenas users com flag `safira_staff` em `User.roles`. Qualquer outro user redireciona pra `/dashboard`.
 
 ---
 
-## 2. `/admin/clientes/novo` — Criar cliente
+## 2. `/admin/clientes/novo` — Criar cliente (tela única)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -43,297 +66,220 @@ Wireframes em ASCII art pra validar estrutura antes de codar. Visual final segue
 │                                                                     │
 │  Novo cliente                                                       │
 │                                                                     │
+│  ── Dados do negócio ────────────────────────────────────────────   │
+│                                                                     │
 │  Nome do negócio                                                    │
-│  [ Clínica Vívera____________________________ ]                    │
+│  [ Clínica Maria_____________________________________ ]             │
 │                                                                     │
 │  Slug (URL interna)            auto-gerado, editável                │
-│  [ vivera______________________ ]   → safira-vivera.app/vivera     │
+│  [ clinica-maria_______________ ]                                   │
 │                                                                     │
 │  Tipo de negócio                                                    │
 │  ( ● ) Negócio local (clínica, loja física, consultório)           │
 │  ( ○ ) Infoproduto (curso, mentoria, assinatura digital)           │
 │  ( ○ ) Ecommerce (loja online, vendas diretas)                     │
 │                                                                     │
-│  Provedores de mídia habilitados                                   │
-│  [ ✓ ] Meta Ads (Facebook + Instagram)                             │
-│  [   ] Google Ads                                                  │
+│  Provedores habilitados                                             │
+│  [ ✓ ] Meta Ads       [   ] Google Ads                              │
 │                                                                     │
-│  Primeiro usuário (dono do negócio)                                │
+│  ── Acesso do cliente (OWNER) ───────────────────────────────────   │
+│                                                                     │
 │  Nome                                                               │
-│  [ Maria Silva__________________________ ]                          │
-│  Email (onde vai receber o invite)                                  │
-│  [ maria@vivera.com.br__________________ ]                          │
+│  [ Maria Silva_________________________ ]                           │
 │                                                                     │
-│                              [ Cancelar ]  [ Criar e enviar invite ]│
+│  Email (login)                                                      │
+│  [ maria@clinicamaria.com.br____________ ]                          │
+│                                                                     │
+│  Senha inicial                    [ Gerar automática ]              │
+│  [ K9x#7mQ2pLr4wZn1_________________ ] [ copiar 📋 ]                │
+│                                                                     │
+│  ℹ  Mande a senha pro cliente por WhatsApp depois. Peça pra ele     │
+│    trocar no primeiro login (telinha de "alterar senha" ainda       │
+│    fica pra próxima iteração).                                      │
+│                                                                     │
+│                                [ Cancelar ]  [ Criar cliente ]      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 **Ao submeter:**
-1. Valida slug único
-2. Cria Account + primeira Membership OWNER pro email informado
-3. Cria user placeholder (se email não existe ainda) com `password_hash = null`
-4. Envia email com token de invite válido por 7 dias
-5. Email: "Maria, Guilherme criou um acesso pra você no Relatórios Safira. [Definir senha e entrar]"
-6. Redireciona pra `/admin/clientes/[slug]`
+
+1. Valida slug único + email não existe ainda
+2. `POST /admin/accounts` cria:
+   - Row em `accounts` com status ACTIVE
+   - Row em `users` com email + `password_hash = bcrypt(senha)` + `roles: ['user']`
+   - Row em `account_memberships` com `role = OWNER`
+3. Redireciona pra `/admin/clientes/[slug]` com toast "Cliente criado. Envie a senha ao OWNER."
+
+Nada de token de invite. Nada de email transacional.
 
 ---
 
-## 3. `/admin/clientes/[slug]` — Detalhes
+## 3. `/admin/clientes/[slug]` — Detalhes (aba única)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ ← Clientes   /   Clínica Vívera                       [ Entrar como]│
+│ ← Clientes   /   Clínica Vívera                      [ Entrar como ]│
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ┌──────┐  Clínica Vívera                       [ Editar ]          │
+│  ┌──────┐  Clínica Vívera                                           │
 │  │ logo │  Negócio local · Slug: vivera                             │
-│  └──────┘  Ativo · Criado em 15/03/2026                             │
+│  └──────┘  Criado em 15/03/2026 · Último login: agora               │
 │                                                                     │
-│  [ Geral ] [ Membros ] [ Integrações ] [ Permissões ] [ Atividade ] │
-│  ───────                                                            │
+│  ── Status ─────────────────────────────────────────────────────    │
 │                                                                     │
-│  Status do negócio                                                  │
-│  ◉ Ativo     ○ Suspenso     ○ Arquivado                             │
+│  Situação do cliente                                                │
+│  ( ● ) Ativo                                                        │
+│  ( ○ ) Suspenso  — bloqueia login, mantém dados                     │
+│  ( ○ ) Arquivado — soft delete, não aparece mais na lista           │
 │                                                                     │
-│  Tipo de negócio                                                    │
-│  Local [ Trocar ]                                                   │
+│  ── Negócio ────────────────────────────────────────────────────    │
 │                                                                     │
-│  Provedores                                                         │
-│  [ ✓ ] Meta Ads         [ ] Google Ads                              │
+│  Nome              [ Clínica Vívera__________________ ]             │
+│  Tipo              Negócio local                                    │
+│  Provedores        [ ✓ ] Meta  [ ✓ ] Google                         │
+│                                         [ Salvar alterações ]       │
 │                                                                     │
-│  [ Salvar alterações ]                                              │
+│  ── OWNER ──────────────────────────────────────────────────────    │
+│                                                                     │
+│  Maria Silva · maria@clinicamaria.com.br · último login há 2h       │
+│  [ Resetar senha ] ← gera nova senha, você copia e manda            │
+│                                                                     │
+│  ── Integrações ────────────────────────────────────────────────    │
+│                                                                     │
+│  Meta Ads       ● Conectado · Token sistema · sempre ativo          │
+│  Google Ads     ○ Não conectado                                     │
+│                                                                     │
+│  [ Entrar como ] pra conectar Google Ads em nome do cliente (OAuth) │
+│                                                                     │
+│  ── Atividade recente ──────────────────────────────────────────    │
+│                                                                     │
+│  • agora · Maria Silva · Login                                      │
+│  • 2h atrás · Maria Silva · Visualizou /campanhas                   │
+│  • ontem · Guilherme (staff) · Entrou como Clínica Vívera           │
+│  • ontem · Maria Silva · Desconectou Google Ads                     │
+│                                                                     │
+│                                                            [ Ver +] │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Botão "Entrar como"** no canto: dispara impersonate (`POST /auth/impersonate/:accountId`, requer flag `safira_staff`). JWT novo é emitido com `account.id` do cliente + claim `impersonatedBy: <staff_user_id>`. Banner amarelo no topo do dashboard: *"Você está visualizando como Clínica Vívera. [Sair]"*. Toda ação nesse modo vai pro audit log com o staff real.
+**Botão "Entrar como"** dispara `POST /auth/impersonate/:accountId`. JWT novo é emitido com `currentAccountId` = account alvo e claim `impersonatedBy = staff.id`. Banner amarelo fixo no topo do dashboard: *"Você está visualizando como Clínica Vívera. [Sair]"*. Toda ação cai no audit log com o staff real.
+
+**Botão "Resetar senha"** gera senha aleatória de 16 chars, atualiza `password_hash` do OWNER, mostra modal com a senha pra staff copiar. Sem email automático.
 
 ---
 
-## 4. `/admin/clientes/[slug]` aba Membros
+## 4. Modal "Resetar senha"
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  [ Geral ] [ Membros ] [ Integrações ] [ Permissões ] [ Atividade ] │
-│            ────────                                                 │
-│                                                                     │
-│  Membros da conta                              [ + Convidar membro ]│
-│                                                                     │
-│  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ Nome           Email              Role        Últ login        │ │
-│  ├───────────────────────────────────────────────────────────────┤ │
-│  │ Maria Silva    maria@...          OWNER       agora       [⋮] │ │
-│  │ João Func      joao@...           MEMBER      3d atrás    [⋮] │ │
-│  │ Pedro (convite pendente)  pedro@... — expira em 5d       [⋮] │ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                                                                     │
-│  [⋮] abre: Editar role, Editar permissões, Remover, Reenviar invite │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  Nova senha gerada                              │
+│                                                 │
+│  Senha:                                         │
+│  [ Xh9$rK2!pLn8WqZ3___________ ] [ copiar 📋 ] │
+│                                                 │
+│  ⚠ Essa senha só aparece uma vez. Copie e      │
+│    mande pro cliente por WhatsApp agora.        │
+│                                                 │
+│  A senha antiga foi invalidada. Qualquer        │
+│  sessão ativa do OWNER foi derrubada.           │
+│                                                 │
+│                              [ Fechar ]         │
+└─────────────────────────────────────────────────┘
 ```
 
-Modal "Convidar membro":
-
-```
-┌─────────────────────────────────────┐
-│  Convidar novo membro               │
-│                                     │
-│  Email                              │
-│  [ ____________________ ]           │
-│                                     │
-│  Role                               │
-│  ( ○ ) OWNER                        │
-│  ( ● ) ADMIN                        │
-│  ( ○ ) MEMBER                       │
-│                                     │
-│  Permissões especiais (se MEMBER)   │
-│  [ ] Pode ver gasto (spend)         │
-│  [ ] Pode ver CPA                   │
-│  [ ] Pode ver ROAS                  │
-│  [ ] Pode ver CPM                   │
-│                                     │
-│       [ Cancelar ]  [ Enviar ]      │
-└─────────────────────────────────────┘
-```
+Backend por trás: `POST /admin/accounts/:id/reset-owner-password`:
+1. Gera senha aleatória (16 chars, alfanumérico + especial)
+2. `bcrypt.hash` + `users.update({ password_hash })`
+3. `authService.logoutAllSessions(ownerId)` — invalida todos os tokens existentes
+4. Retorna a senha em texto claro (**única vez que ela existe em memória**)
 
 ---
 
-## 5. `/admin/clientes/[slug]` aba Integrações
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  [ Geral ] [ Membros ] [ Integrações ] [ Permissões ] [ Atividade ] │
-│                        ──────────────                               │
-│                                                                     │
-│  Meta Ads                                                           │
-│  ┌───────────────────────────────────────────────────────────────┐ │
-│  │  ● Conectado · Token do sistema · válido                       │ │
-│  │  Conta: ID 123456789 · Nome "Clínica Vívera Ads"               │ │
-│  │  Campanhas ativas: 4                                           │ │
-│  │                                                   [ Desconectar]│ │
-│  └───────────────────────────────────────────────────────────────┘ │
-│                                                                     │
-│  Google Ads                                                         │
-│  ┌───────────────────────────────────────────────────────────────┐ │
-│  │  ○ Não conectado                                               │ │
-│  │  Pra conectar, clique em "Conectar" e faça login como cliente  │ │
-│  │                                                    [ Conectar ]│ │
-│  └───────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Conectar** dispara OAuth com o fluxo já existente, mas associa o token ao `accountId` atual (não ao `userId` do staff Safira).
-
----
-
-## 6. `/admin/clientes/[slug]` aba Permissões
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  [ Geral ] [ Membros ] [ Integrações ] [ Permissões ] [ Atividade ] │
-│                                        ──────────────               │
-│                                                                     │
-│  Permissões por membro                                              │
-│                                                                     │
-│  Maria Silva (OWNER) — tudo liberado por padrão                     │
-│                                                                     │
-│  João Func (MEMBER)  [ Editar ]                                     │
-│    ✓ view:dashboard  ✓ view:campaigns  ✓ view:creatives             │
-│    ✗ view:metrics:spend  ✗ view:metrics:cpa  ✗ view:metrics:roas    │
-│    ✗ view:metrics:cpm  ✗ view:settings                              │
-│                                                                     │
-│  Pedro (ADMIN)       [ Editar ]                                     │
-│    (defaults do ADMIN)                                              │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-Modal "Editar permissões": toggle por permissão. Só mostra as que fazem sentido pro role do usuário.
-
----
-
-## 7. `/admin/clientes/[slug]` aba Atividade
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Atividade recente                                                  │
-│                                                                     │
-│  • 2 min atrás · Maria Silva · Login                                │
-│  • 15 min atrás · Guilherme (staff) · Entrou como Vívera            │
-│  • 2h atrás · João Func · Visualizou /campanhas                     │
-│  • Ontem · Maria Silva · Conectou Google Ads                        │
-│  • Ontem · Guilherme (staff) · Convidou pedro@vivera.com.br         │
-│                                                                     │
-│  [ Ver todos ]                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 8. Seletor de Account no TopBar (quando user tem múltiplos)
+## 5. Seletor no TopBar (só staff)
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  [ ≡ ]   Clínica Vívera ▼   [ Filter bar ]    [🔔][👤]│
+│  [ ≡ ]    ▼ Vendo: Clínica Vívera      [🔔][👤]    │
 │           ↓ (clique abre)                             │
 │           ┌─────────────────────────────┐            │
-│           │ Clínica Vívera  ✓           │            │
-│           │ Loja Marina                 │            │
-│           │ Curso Fabio                 │            │
-│           │ ─────────────────           │            │
-│           │ + Todos os clientes (admin) │            │
+│           │ ⚠ Modo staff                │            │
+│           │ Vendo como: Clínica Vívera  │            │
+│           │ ─────────────────────────   │            │
+│           │ Sair desse cliente          │            │
+│           │ Trocar pra outro cliente ▶  │            │
+│           │ Ir pra /admin/clientes      │            │
 │           └─────────────────────────────┘            │
 └──────────────────────────────────────────────────────┘
 ```
 
-Pra user comum que tem 1 account só, não mostra seletor (só o nome). Pra user com flag `safira_staff`, sempre mostra — + opção "Todos os clientes" que leva pra `/admin/clientes`.
+User comum OWNER (tem 1 account só) **NÃO vê seletor** — aparece só o nome do negócio dele como info.
 
 ---
 
-## 9. Banner de impersonation
+## 6. Banner de impersonação
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ ⚠  Você está visualizando como Clínica Vívera (Maria Silva)         │
-│    Todas as suas ações estão sendo registradas em audit log.        │
-│                                            [ Voltar ao admin ]      │
+│    Todas as suas ações estão registradas em audit log.              │
+│                                            [ Sair desse cliente ]   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-Fixed no topo durante impersonation. Some quando staff sai do modo.
+Fixed no topo enquanto staff está impersonando. "Sair desse cliente" volta pro `/admin/clientes`.
 
 ---
 
-## 10. Dashboard por nicho — LOCAL_BUSINESS
+## 7. Templates de dashboard por nicho (Fase 5)
 
-Layout atual da Vera se mantém. Muda só a copy contextual:
+Layout igual ao dashboard atual, copy/widgets variam conforme `account.nicheType`.
 
-- "Conversões" → "Contatos no WhatsApp" (default) / "Agendamentos"
-- Mapa de bairros visível por padrão
-- `/geografia` visível no sidebar
-- Copy de insights fala em "pacientes/clientes" conforme config
+### LOCAL_BUSINESS (já validado — Vívera)
+- "Conversões" = mensagens WhatsApp / agendamentos
+- Mapa de bairros em destaque, `/geografia` visível no sidebar
+- Copy "paciente/cliente" conforme config do negócio
 
----
-
-## 11. Dashboard por nicho — INFOPRODUCT
-
+### INFOPRODUCT
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  KPIs                                                               │
-│  [ Vendas ] [ CAC ] [ Ticket médio ] [ Taxa checkout ] [ ROAS ]    │
-│                                                                     │
-│  Funil do produto                                                   │
-│  Impressões → Cliques → Landing → Checkout → Compra                 │
-│  100k        →  3k    →  900   →  180     →  45                    │
-│                 3%        30%      20%      25%                     │
-│                                                                     │
-│  Carrinho abandonado                                                │
-│  32 carrinhos nas últimas 24h — R$ 4.200 em potencial               │
-│                                                                     │
-│  Produtos/ofertas                                                   │
-│  [ tabela por produto ]                                             │
-└─────────────────────────────────────────────────────────────────────┘
+KPIs: [ Vendas ] [ CAC ] [ Ticket médio ] [ Taxa checkout ] [ ROAS ]
+
+Funil do produto
+  Impressões → Cliques → Landing → Checkout → Compra
+  100k       → 3k     → 900     → 180      → 45
+
+Carrinho abandonado — 32 nas últimas 24h = R$ 4.200 potencial
+
+Produtos / ofertas [ tabela ]
 ```
+Widgets escondidos: mapa de bairros, `/geografia`.
 
-**Widgets removidos do preset:** mapa de bairros, `/geografia`.
-**Widgets novos:** funil do checkout (reaproveita FunnelChart), carrinho abandonado (novo).
-
----
-
-## 12. Dashboard por nicho — ECOMMERCE
-
+### ECOMMERCE
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  KPIs                                                               │
-│  [ Receita ] [ ROAS ] [ Pedidos ] [ Ticket médio ] [ CAC ]         │
-│                                                                     │
-│  Top produtos vendidos                                              │
-│  1. Produto X — 145 vendas — R$ 12.300                              │
-│  2. Produto Y — 89 vendas — R$ 8.900                                │
-│  ...                                                                │
-│                                                                     │
-│  Vendas por canal                                                   │
-│  [ chart Meta vs Google vs orgânico ]                               │
-│                                                                     │
-│  Clientes recorrentes vs novos                                      │
-│  [ donut: 35% recorrente, 65% novo ]                                │
-└─────────────────────────────────────────────────────────────────────┘
+KPIs: [ Receita ] [ ROAS ] [ Pedidos ] [ Ticket médio ] [ CAC ]
+
+Top produtos vendidos
+  1. Produto X — 145 vendas — R$ 12.300
+  2. Produto Y — 89 vendas — R$ 8.900
+
+Vendas por canal [ chart Meta vs Google ]
+
+Recorrentes vs novos [ donut: 35% / 65% ]
 ```
 
 ---
 
-## Componentes a criar
+## Componentes novos a criar
 
-Novos componentes que essas telas exigem:
+Versão enxuta (vs plano original):
 
-- `AdminClientsTable` — listagem de accounts
-- `CreateClientForm` — com validação de slug único
-- `ClientTabs` — tabs de detalhes
-- `MemberRow` + `InviteMemberModal`
-- `PermissionToggle` — check list de permissões
-- `ActivityFeed` — timeline de eventos
-- `AccountSwitcher` — dropdown no TopBar
-- `ImpersonationBanner` — banner amarelo fixo
-- `CheckoutFunnel` — funil de infoproduto (extensão do FunnelChart)
-- `AbandonedCartCard` — novo widget
-- `TopProductsTable` — extensão de DataTable
-- `ChannelBreakdownChart` — extensão de chart
+- `AdminClientsTable` — lista
+- `CreateClientForm` — tudo em 1 tela, com gerador de senha
+- `ClientDetailsPage` — sem tabs, tudo numa coluna
+- `ResetPasswordModal`
+- `AccountSwitcher` (só staff) — dropdown TopBar
+- `ImpersonationBanner`
+- (nicho) `CheckoutFunnel`, `AbandonedCartCard`, `TopProductsTable`, `ChannelBreakdownChart`
 
-Reutilizar 80% do que já existe. O "visual Safira" do CEO fica mantido.
+**Não entram:** `MemberRow`, `InviteMemberModal`, `PermissionToggle`, `ClientTabs`.
+
+Reutilização continua alta — ~80% da UI do dashboard comum serve pros 3 nichos.

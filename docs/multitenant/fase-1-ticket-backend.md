@@ -6,6 +6,24 @@
 
 ---
 
+## Status de execução (2026-04-23)
+
+| PR | Escopo original | Status |
+|---|---|---|
+| 1.1 | Schema + migration + seed | ✅ [backend #31](https://github.com/guivandrade/safira-vivera-backend/pull/31) |
+| 1.2 | `@CurrentAccount` + `AccountScopedGuard` + staff bypass | ✅ [backend #32](https://github.com/guivandrade/safira-vivera-backend/pull/32) |
+| 1.3 (quebrado) | Refactor services tenant-scope | 🟡 Em andamento: **1.3.a** ([#33](https://github.com/guivandrade/safira-vivera-backend/pull/33) Clinic+Preferences+middleware) + **1.3.b.1** ([#35](https://github.com/guivandrade/safira-vivera-backend/pull/35) Cache) + **1.3.b.2** ([#36](https://github.com/guivandrade/safira-vivera-backend/pull/36) Google Ads OAuth) + **1.3.c.1** ([#37](https://github.com/guivandrade/safira-vivera-backend/pull/37) Controllers com guards). **Falta 1.3.c.2** (services propagam accountId). |
+| 1.4 | `PermissionsGuard` + `/auth/me` + `/auth/switch-account` | ✅ [backend #34](https://github.com/guivandrade/safira-vivera-backend/pull/34) |
+| 1.5 | E2E isolation + STRICT | ⬜ Pendente |
+
+**Frontend complementar:** [#51 AuthProvider+Can+Sidebar](https://github.com/guivandrade/safira-vivera-frontend/pull/51) + [#52 KpiCards gated](https://github.com/guivandrade/safira-vivera-frontend/pull/52) — ambos mergeados.
+
+**Pendências críticas:**
+1. **PR 1.3.c.2** — services migram `userId` → `accountId` pra staff ver dados reais
+2. **PR 1.5** — suite E2E de isolation + upar Prisma middleware pra `strict`
+
+---
+
 ## Contexto
 
 Leia primeiro (nessa ordem):
