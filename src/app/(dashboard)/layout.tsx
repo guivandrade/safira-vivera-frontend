@@ -9,11 +9,13 @@ import { SavedViewsMenu } from '@/components/layout/SavedViewsMenu';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { FilterUrlSync } from '@/components/layout/FilterUrlSync';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { AuthGuard } from '@/components/layout/AuthGuard';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
+    <AuthGuard>
     <div className="flex h-screen bg-surface-muted">
       <a href="#main-content" className="skip-to-content">
         Pular para o conteúdo
@@ -52,5 +54,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
     </div>
+    </AuthGuard>
   );
 }

@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { QueryClientProviderWrapper } from '@/providers/query-client-provider';
 import { ThemeProvider, themeInitScript } from '@/providers/theme-provider';
 import { ToastProvider } from '@/providers/toast-provider';
+import { MonitoringBridge } from '@/providers/monitoring-bridge';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
+        <MonitoringBridge />
         <ThemeProvider>
           <QueryClientProviderWrapper>
             <ToastProvider>{children}</ToastProvider>
