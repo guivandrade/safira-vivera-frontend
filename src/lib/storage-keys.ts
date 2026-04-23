@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: 'refresh_token',
   USER: 'user',
   THEME: 'safira-theme',
+  IMPERSONATED_ACCOUNT: 'safira-impersonated',
 } as const;
 
 export const storageKeyFor = {
