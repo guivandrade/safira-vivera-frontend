@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
@@ -169,9 +170,9 @@ export function CreativesPage() {
             (imagem, vídeo, carrossel) está performando melhor.
             {' '}
             <span className="text-ink-subtle">Google Ads não aparece aqui porque usa rede de pesquisa (keywords) — veja em{' '}
-              <a href="/palavras-chave" className="text-accent hover:underline">
+              <Link href="/palavras-chave" className="text-accent hover:underline">
                 Palavras-chave
-              </a>
+              </Link>
               .
             </span>
           </p>
