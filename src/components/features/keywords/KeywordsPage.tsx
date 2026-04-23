@@ -9,6 +9,7 @@ import { KpiCard } from '@/components/features/campaigns/KpiCards';
 import { CsvExportButton } from '@/components/features/campaigns/CsvExportButton';
 import { TableSkeleton, KpiCardsSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
 import { useKeywords } from '@/hooks/use-keywords';
+import { getUserFacingMessage } from '@/lib/errors';
 import type { KeywordRow } from '@/types/api';
 import { formatCurrency, formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
 
@@ -120,7 +121,7 @@ export function KeywordsPage() {
 
       {error && (
         <div className="rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
-          {error instanceof Error ? error.message : 'Erro ao carregar palavras-chave'}
+          {getUserFacingMessage(error, 'Não conseguimos carregar as palavras-chave.')}
         </div>
       )}
 

@@ -7,7 +7,7 @@ import { useGoogleAdsStatus } from '@/hooks/use-integration-status';
 import { useFiltersStore } from '@/stores/filters-store';
 import { useToast } from '@/providers/toast-provider';
 import { apiClient } from '@/lib/api-client';
-import { getErrorMessage } from '@/lib/errors';
+import { getErrorMessage, getUserFacingMessage } from '@/lib/errors';
 import { CampaignSummary, MonthlyData } from '@/types/campaigns';
 import { formatMonthShort } from '@/lib/formatters';
 import { ChartsSkeleton, KpiCardsSkeleton, TableSkeleton } from './CampaignsSkeleton';
@@ -217,7 +217,7 @@ export function CampaignsDashboard() {
       {error && (
         <div className="rounded-md border border-danger/30 bg-danger/5 p-4">
           <p className="text-sm font-medium text-danger">
-            Erro: {error instanceof Error ? error.message : 'Erro desconhecido'}
+            {getUserFacingMessage(error, 'Não conseguimos carregar as campanhas agora.')}
           </p>
           <Button size="sm" variant="primary" className="mt-3" onClick={() => refetch()}>
             Tentar novamente

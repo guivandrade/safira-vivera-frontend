@@ -208,11 +208,32 @@ function LoginForm() {
             </div>
           )}
 
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() =>
+                setError(
+                  'Recuperação de senha ainda não está disponível. Fale com o time Safira pra redefinir.',
+                )
+              }
+              disabled={isLoading}
+              className="text-xs text-ink-muted hover:text-accent"
+            >
+              Esqueceu a senha?
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={isLoading || !email || !password}
-            className="w-full rounded-lg bg-accent py-3 font-semibold text-accent-fg transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent py-3 font-semibold text-accent-fg transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
+            {isLoading && (
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-accent-fg/30 border-t-accent-fg"
+                aria-hidden
+              />
+            )}
             {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
