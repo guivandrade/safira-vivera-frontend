@@ -132,23 +132,33 @@ export default function NovoClientePage() {
                 <option value="ECOMMERCE">E-commerce</option>
               </select>
             </Field>
-            <div className="flex items-end gap-4 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={form.hasGoogle ?? false}
-                  onChange={(e) => setField('hasGoogle', e.target.checked)}
-                />
-                Google Ads
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={form.hasMeta ?? false}
-                  onChange={(e) => setField('hasMeta', e.target.checked)}
-                />
-                Meta Ads
-              </label>
+            <div className="sm:col-span-2">
+              <p className="mb-2 text-sm font-medium text-ink">Integrações disponíveis</p>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.hasGoogle ?? false}
+                    onChange={(e) => setField('hasGoogle', e.target.checked)}
+                  />
+                  Google Ads
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.hasMeta ?? false}
+                    onChange={(e) => setField('hasMeta', e.target.checked)}
+                  />
+                  Meta Ads
+                </label>
+              </div>
+              {form.hasMeta && (
+                <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+                  <strong>Atenção:</strong> Meta Ads ainda usa credencial global. Ao marcar,
+                  este cliente vê os dados da conta de anúncios configurada no ambiente —
+                  não a dele. Use só em dev/teste até lançarmos a integração Meta por cliente.
+                </p>
+              )}
             </div>
           </div>
         </Card>
