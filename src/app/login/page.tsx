@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { classifyError, getErrorMessage } from '@/lib/errors';
+import type { MeResponse } from '@/types/auth-me';
 
 interface LoginResponse {
   access_token: string;
@@ -63,6 +64,20 @@ function LoginForm() {
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.data.access_token);
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.data.refresh_token);
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.user));
+
+      // Staff Safira não tem `currentAccountId` no JWT por design (escolhe via
+      // header x-account-id ou impersonate). Cair no returnUrl padrão `/campanhas`
+      // geraria 401 do AccountScopedGuard. Mandamos pra /admin/clientes pra
+      // escolher um cliente antes de qualquer rota que pede tenant-scope.
+      try {
+        const me = await apiClient.get<MeResponse>('/auth/me');
+        if (me.data.user.isSafiraStaff && !me.data.currentAccount) {
+          router.push('/admin/clientes');
+          return;
+        }
+      } catch {
+        // Se /auth/me falhar, cai no fluxo default — raramente acontece.
+      }
 
       router.push(returnUrl);
     } catch (err: unknown) {
