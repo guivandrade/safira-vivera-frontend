@@ -3,12 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
+import { useCan } from '@/providers/auth-provider';
+import type { Permission } from '@/types/auth-me';
 
 interface NavItem {
   href: string;
   label: string;
   icon: JSX.Element;
   group?: 'primary' | 'secondary';
+  /** Esconde o item quando o user não tem a permissão. */
+  requires?: Permission;
 }
 
 const items: NavItem[] = [
@@ -16,6 +20,7 @@ const items: NavItem[] = [
     href: '/dashboard',
     label: 'Dashboard',
     group: 'primary',
+    requires: 'view:dashboard',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="8" height="8" rx="1.5" />
@@ -29,6 +34,7 @@ const items: NavItem[] = [
     href: '/campanhas',
     label: 'Campanhas',
     group: 'primary',
+    requires: 'view:campaigns',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 3v18h18" />
@@ -40,6 +46,7 @@ const items: NavItem[] = [
     href: '/palavras-chave',
     label: 'Palavras-chave',
     group: 'primary',
+    requires: 'view:keywords',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="11" cy="11" r="7" />
@@ -51,6 +58,7 @@ const items: NavItem[] = [
     href: '/criativos',
     label: 'Criativos',
     group: 'primary',
+    requires: 'view:creatives',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -63,6 +71,7 @@ const items: NavItem[] = [
     href: '/geografia',
     label: 'Geografia',
     group: 'primary',
+    requires: 'view:geography',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
@@ -75,6 +84,7 @@ const items: NavItem[] = [
     href: '/funil',
     label: 'Funil',
     group: 'primary',
+    requires: 'view:funnel',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 4h18l-7 9v7l-4-2v-5L3 4z" />
@@ -85,6 +95,7 @@ const items: NavItem[] = [
     href: '/comparar',
     label: 'Comparar',
     group: 'primary',
+    requires: 'view:compare',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <path d="M8 3v18M16 3v18M3 8h10M11 16h10" />
@@ -95,6 +106,7 @@ const items: NavItem[] = [
     href: '/integracoes',
     label: 'Integrações',
     group: 'secondary',
+    requires: 'manage:integrations',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -106,6 +118,7 @@ const items: NavItem[] = [
     href: '/configuracoes',
     label: 'Configurações',
     group: 'secondary',
+    requires: 'view:settings',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3" />
@@ -125,8 +138,10 @@ export function Sidebar() {
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
-  const primary = items.filter((i) => i.group === 'primary');
-  const secondary = items.filter((i) => i.group === 'secondary');
+  const can = useCan();
+  const visible = items.filter((i) => !i.requires || can(i.requires));
+  const primary = visible.filter((i) => i.group === 'primary');
+  const secondary = visible.filter((i) => i.group === 'secondary');
 
   return (
     <div className="flex h-full flex-col">
