@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
@@ -11,29 +12,43 @@ import { useAuth } from '@/providers/auth-provider';
  * Fonte de verdade: `user.isSafiraStaff && currentAccount !== null`.
  * Staff sem currentAccount está fora de impersonação — está na lista admin.
  *
- * Botão "Sair" chama /auth/logout-all (ou apenas logout no token atual?) —
- * escolha mais segura aqui é logout simples + clearar impersonation flag,
- * sem invalidar todas as sessões (staff pode estar logado em outra aba).
+ * Botão "Sair da visualização" chama /auth/exit-impersonation — staff recebe
+ * JWT novo sem currentAccountId, continua logado, volta pra /admin/clientes.
  */
 export function ImpersonationBanner() {
   const { user, currentAccount } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isExiting, setIsExiting] = useState(false);
 
   if (!user?.isSafiraStaff || !currentAccount) return null;
 
   const handleExit = async () => {
+    setIsExiting(true);
     try {
-      // Logout do token corrente (o que tem currentAccountId fixado).
-      // Staff precisa re-login ou voltar via /admin/clientes; aqui o fluxo
-      // mais direto é limpar tokens + ir pra /login.
-      await apiClient.post('/auth/logout').catch(() => null);
-    } finally {
+      const { data } = await apiClient.post<{
+        access_token: string;
+        refresh_token: string;
+      }>('/auth/exit-impersonation');
+
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+      localStorage.removeItem(STORAGE_KEYS.IMPERSONATED_ACCOUNT);
+
+      // Invalida todas as queries — próxima rota vai refetchar com o JWT novo
+      // (sem currentAccountId, pra staff).
+      await queryClient.invalidateQueries();
+      router.replace('/admin/clientes');
+    } catch {
+      // Fallback: se o endpoint falhar por qualquer motivo, limpa tudo e manda
+      // pro login. Melhor perder a sessão do que deixar staff preso.
       localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.IMPERSONATED_ACCOUNT);
       queryClient.clear();
       router.replace('/login?returnUrl=%2Fadmin%2Fclientes');
+    } finally {
+      setIsExiting(false);
     }
   };
 
@@ -46,9 +61,10 @@ export function ImpersonationBanner() {
       <button
         type="button"
         onClick={handleExit}
-        className="shrink-0 rounded border border-amber-400 bg-white px-2 py-0.5 text-xs font-medium text-amber-900 hover:bg-amber-50 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-100 dark:hover:bg-amber-900"
+        disabled={isExiting}
+        className="shrink-0 rounded border border-amber-400 bg-white px-2 py-0.5 text-xs font-medium text-amber-900 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-100 dark:hover:bg-amber-900"
       >
-        Sair da visualização
+        {isExiting ? 'Saindo...' : 'Sair da visualização'}
       </button>
     </div>
   );
