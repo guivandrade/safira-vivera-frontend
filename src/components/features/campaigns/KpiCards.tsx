@@ -30,6 +30,20 @@ import {
 } from '@/lib/formatters';
 import { useFiltersStore } from '@/stores/filters-store';
 import { useKpiPrefs } from '@/hooks/use-kpi-prefs';
+import { useCan } from '@/providers/auth-provider';
+import type { Permission } from '@/types/auth-me';
+
+/**
+ * Mapa métrica → permissão. Chaves ausentes = sem restrição (aparecem
+ * pra todos). User sem a permissão nem vê a métrica no dashboard nem
+ * no menu de configuração — transparente, sem pista de que existe.
+ */
+const METRIC_PERMISSIONS: Record<string, Permission> = {
+  spend: 'view:metrics:spend',
+  cpa: 'view:metrics:cpa',
+  roas: 'view:metrics:roas',
+  cpm: 'view:metrics:cpm',
+};
 
 interface KpiCardsProps {
   data: CampaignInsightsResponse;
@@ -50,6 +64,7 @@ const DEFAULT_ORDER = ['spend', 'conversions', 'cpa', 'ctr', 'impressions', 'cli
 export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
   const includeBoosts = useFiltersStore((s) => s.includeBoosts);
   const includeInactive = useFiltersStore((s) => s.includeInactive);
+  const can = useCan();
   const { order, hidden, setOrder, toggleHidden, reset } = useKpiPrefs(
     'dashboard',
     DEFAULT_ORDER,
@@ -176,9 +191,21 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
     return order.map((k) => byKey[k]).filter((m): m is KpiMetric => !!m);
   }, [data, platformFilter, includeBoosts, includeInactive, order]);
 
+  // Filtra métricas sensíveis que o user não tem permissão de ver. Aplicado
+  // antes de `visibleMetrics` e `allMetrics` pra que a métrica desapareça
+  // TAMBÉM do menu "Cards" — sem pistas de que existe uma métrica escondida.
+  const permittedMetrics = useMemo(
+    () =>
+      metrics.filter((m) => {
+        const perm = METRIC_PERMISSIONS[m.key];
+        return !perm || can(perm);
+      }),
+    [metrics, can],
+  );
+
   const visibleMetrics = useMemo(
-    () => metrics.filter((m) => !hidden.has(m.key)),
-    [metrics, hidden],
+    () => permittedMetrics.filter((m) => !hidden.has(m.key)),
+    [permittedMetrics, hidden],
   );
 
   const sensors = useSensors(
@@ -199,7 +226,7 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
   };
 
   const dndEnabled = isDesktop;
-  const allMetrics = DEFAULT_ORDER.map((k) => metrics.find((m) => m.key === k)).filter(
+  const allMetrics = DEFAULT_ORDER.map((k) => permittedMetrics.find((m) => m.key === k)).filter(
     (m): m is KpiMetric => !!m,
   );
 
