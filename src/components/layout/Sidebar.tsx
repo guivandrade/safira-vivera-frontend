@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
-import { useCan } from '@/providers/auth-provider';
+import { useAuth, useCan } from '@/providers/auth-provider';
 import type { Permission } from '@/types/auth-me';
 
 interface NavItem {
   href: string;
   label: string;
   icon: JSX.Element;
-  group?: 'primary' | 'secondary';
+  group?: 'primary' | 'secondary' | 'admin';
   /** Esconde o item quando o user não tem a permissão. */
   requires?: Permission;
+  /** Quando true, só staff Safira vê o item. */
+  staffOnly?: boolean;
 }
 
 const items: NavItem[] = [
@@ -126,6 +128,20 @@ const items: NavItem[] = [
       </svg>
     ),
   },
+  {
+    href: '/admin/clientes',
+    label: 'Clientes',
+    group: 'admin',
+    staffOnly: true,
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-[18px] w-[18px]" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
 ];
 
 export function Sidebar() {
@@ -139,9 +155,16 @@ export function Sidebar() {
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const can = useCan();
-  const visible = items.filter((i) => !i.requires || can(i.requires));
+  const { user } = useAuth();
+  const isStaff = user?.isSafiraStaff ?? false;
+  const visible = items.filter((i) => {
+    if (i.staffOnly && !isStaff) return false;
+    if (i.requires && !can(i.requires)) return false;
+    return true;
+  });
   const primary = visible.filter((i) => i.group === 'primary');
   const secondary = visible.filter((i) => i.group === 'secondary');
+  const admin = visible.filter((i) => i.group === 'admin');
 
   return (
     <div className="flex h-full flex-col">
@@ -155,11 +178,22 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void } = {})
           <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
         ))}
 
-        <div className="my-3 border-t border-line-subtle" />
-
+        {secondary.length > 0 && <div className="my-3 border-t border-line-subtle" />}
         {secondary.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
         ))}
+
+        {admin.length > 0 && (
+          <>
+            <div className="my-3 border-t border-line-subtle" />
+            <div className="px-2.5 pb-1 text-[10px] font-medium uppercase tracking-wider text-ink-subtle">
+              Agência
+            </div>
+            {admin.map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
+            ))}
+          </>
+        )}
       </nav>
     </div>
   );
