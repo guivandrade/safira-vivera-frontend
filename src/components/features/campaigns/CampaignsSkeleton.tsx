@@ -18,6 +18,20 @@ export function KpiCardsSkeleton() {
   );
 }
 
+export function SingleChartSkeleton() {
+  return (
+    <div className="rounded-lg border border-line bg-surface p-5">
+      <Pulse className="h-4 w-32" />
+      <Pulse className="mt-1.5 h-3 w-48" />
+      <div className="mt-5 flex h-[220px] items-end gap-2">
+        {[...Array(6)].map((_, bi) => (
+          <Pulse key={bi} className={`flex-1 h-[${50 + bi * 25}%]`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ChartsSkeleton() {
   return (
     <div className="grid gap-4 lg:grid-cols-2">

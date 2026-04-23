@@ -6,9 +6,11 @@ import { useCampaignInsights } from '@/hooks/use-campaign-insights';
 import { useFiltersStore } from '@/stores/filters-store';
 import { useDashboardLayout, LAYOUTS, WidgetKey } from '@/stores/dashboard-layout-store';
 import { KpiCards } from '@/components/features/campaigns/KpiCards';
-import { SpendChart } from '@/components/features/campaigns/SpendChart';
-import { ConversionsChart } from '@/components/features/campaigns/ConversionsChart';
-import { FunnelChart } from '@/components/features/campaigns/FunnelChart';
+import {
+  SpendChart,
+  ConversionsChart,
+  FunnelChart,
+} from '@/components/features/campaigns/lazy-charts';
 import { TopCampaignsTable } from '@/components/features/campaigns/TopCampaignsTable';
 import { DashboardOverviewSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
 import { EmptyStateCTA } from '@/components/features/campaigns/EmptyStateCTA';

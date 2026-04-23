@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useCampaignInsights } from '@/hooks/use-campaign-insights';
 import { useFiltersStore } from '@/stores/filters-store';
 import { Card } from '@/components/ui/Card';
-import { FunnelChart } from '@/components/features/campaigns/FunnelChart';
+import { FunnelChart } from '@/components/features/campaigns/lazy-charts';
 import { KpiCardsSkeleton } from '@/components/features/campaigns/CampaignsSkeleton';
 import { EmptyStateCTA } from '@/components/features/campaigns/EmptyStateCTA';
 import { formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
