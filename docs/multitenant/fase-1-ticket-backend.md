@@ -410,15 +410,15 @@ Frontend Fase 2 começa ─────┘                               │
 
 ---
 
-## Perguntas em aberto
+## Decisões do CEO (2026-04-23) — trava pra execução
 
-Antes de começar, confirmar com o CEO / Diego:
+1. **Email da Vera:** não é hardcoded. O operador descobre dinamicamente via query + `\gset` na hora da migration — ver [fase-0-migration-vera.md § Passo pré-migration](./fase-0-migration-vera.md#passo-pré-migration-descobrir-user_id-da-vera). Zero TBD restante.
 
-1. **Email da Vera no banco produção.** Placeholder é `vera@vivera.com.br`. Confirmar antes de gerar migration SQL final. Ver [fase-0-migration-vera.md § TBD](./fase-0-migration-vera.md#%EF%B8%8F-tbd-antes-da-migration).
+2. **`STRICT_TENANT_SCOPE` em produção:**
+   - Dev/staging: **strict** (middleware derruba a request se faltar `accountId`)
+   - Produção: **warning** no deploy inicial. Middleware loga via `monitoring.captureMessage(level: 'warning')` mas deixa passar. Revisamos os warnings do primeiro mês antes de virar strict em prod.
 
-2. **`STRICT_TENANT_SCOPE` em produção desde o dia 1 ou só warning?**
-   - Strict: qualquer query sem `accountId` **derruba a request**. Seguro mas risco de quebrar edge case não testado.
-   - Warning: loga em `monitoring` mas deixa passar. Mais tolerante, mas vazamento silencioso teórico.
-   - **Recomendação do Diego:** Strict em dev/staging. Produção começa em warning por 1 semana, vira strict depois se zero warnings.
-
-3. **`x-account-id` como header ou vai pro JWT?** Staff precisa indicar qual account está acessando. Header é mais simples (não re-emite JWT por troca). JWT claim é mais "cano único". Recomendação: header pra staff, JWT claim pra user comum (mais frequente).
+3. **Contexto de account na request:**
+   - **User comum** (1 account só): `accountId` vem do **JWT claim** `account.id`. Emitido no login.
+   - **Staff** (`safira_staff`): pode passar header `x-account-id` pra indicar qual cliente está acessando. Trade-off documentado: headers em todas as abas = zero re-emissão de JWT ao trocar de cliente. JWT-based switch faria staff perder múltiplas abas, back button e teria overhead por troca.
+   - Guard faz fallback: prioriza header se presente + user for staff; senão, cai no claim do JWT.

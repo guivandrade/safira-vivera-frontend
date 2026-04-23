@@ -172,15 +172,14 @@ User pode ficar "órfão" (último membership removido, todos os accounts dele a
 
 ## Fases de entrega
 
-### Fase 0 — Planejamento + alinhamento (2-3 dias) ✅ QUASE PRONTO
+### Fase 0 — Planejamento + alinhamento (2-3 dias) ✅ PRONTO
 - [x] Plano mestre escrito
-- [x] 5 decisões resolvidas (ver acima)
+- [x] 5 decisões de produto resolvidas (ver acima)
 - [x] Wireframe ASCII das 12+ telas admin — [fase-0-wireframes-admin.md](multitenant/fase-0-wireframes-admin.md)
 - [x] Catálogo completo de permissões — [fase-0-permissoes.md](multitenant/fase-0-permissoes.md)
-- [x] Plano de migration da Vera — [fase-0-migration-vera.md](multitenant/fase-0-migration-vera.md)
-- [x] Ticket detalhado da Fase 1 — [fase-1-ticket-backend.md](multitenant/fase-1-ticket-backend.md)
-- [ ] **CEO confirma email da Vera** (placeholder `vera@vivera.com.br` é chute — precisa validar antes da migration)
-- [ ] Aprovação final no PR #50
+- [x] Plano de migration da Vera (descoberta dinâmica do user, sem hardcoded) — [fase-0-migration-vera.md](multitenant/fase-0-migration-vera.md)
+- [x] Ticket detalhado da Fase 1 + decisões técnicas travadas — [fase-1-ticket-backend.md](multitenant/fase-1-ticket-backend.md)
+- [ ] Aprovação final no PR #50 (único pendente)
 
 **Saída:** 4 docs aprovados + ticket da Fase 1 pronto pro Bruno disparar.
 
@@ -304,11 +303,12 @@ Cada um desses adiciona 3 dias a 2 semanas. Por isso fora do MVP.
 
 ## Próximo passo
 
-Fase 0 está **95% pronta**. Falta só:
+Fase 0 **pronta pra ser aprovada**. Falta só:
 
-1. CEO confirmar email da Vera no banco produção (precisa pro SQL da migration)
-2. CEO aprovar PR #50 → merge
-3. Bruno pega o ticket [fase-1-ticket-backend.md](multitenant/fase-1-ticket-backend.md) e começa execução
+1. CEO aprova PR #50 → merge
+2. Bruno pega o ticket [fase-1-ticket-backend.md](multitenant/fase-1-ticket-backend.md) e começa execução
+
+Email da Vera é descoberto dinamicamente no primeiro passo da migration (query + `\gset`). Zero hardcoded.
 
 **Ordem de execução da Fase 1** (paralelizável parcial):
 - PR 1.1: schema Prisma + migration (Andre + Bruno)

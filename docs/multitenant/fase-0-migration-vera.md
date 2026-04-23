@@ -15,19 +15,31 @@ Hoje a Vera tem 1 `User` no banco de produção. Esse user tem:
 
 Depois da migration multi-tenant, **toda essa cadeia** precisa passar a ser scoped por `account_id`, com o account da Vera sendo o primeiro registro de `Account`.
 
-## ⚠️ TBD antes da migration
+## Passo pré-migration: descobrir `user_id` da Vera
 
-**Email do user da Vera no banco.** Nos SQLs abaixo usei placeholder `vera@vivera.com.br` — precisa ser substituído pelo email real. Pra descobrir:
+O email da Vera não é hardcoded no SQL — descobrimos dinamicamente pra evitar drift entre doc e banco. O operador executa isto primeiro, confirma visualmente que o resultado é a Vera, exporta o UUID, e os SQLs seguintes consomem via variável psql.
 
 ```sql
+-- 1. Descobrir: user mais antigo que NÃO é staff Safira (= Vera)
 SELECT id, email, name, created_at
 FROM users
 WHERE deleted_at IS NULL
+  AND NOT ('safira_staff' = ANY(roles))
 ORDER BY created_at ASC
-LIMIT 10;
+LIMIT 5;
 ```
 
-O registro mais antigo que não seja staff Safira é a Vera. Confirmar com o CEO antes de rodar qualquer passo em produção.
+Confirmar visualmente (CEO valida o email). Exportar o UUID pra usar nos passos seguintes:
+
+```bash
+export VERA_USER_ID='<uuid-copiado-da-query-acima>'
+```
+
+Os SQLs abaixo usam `:'vera_user_id'` (psql substitution). Inicie a sessão `psql` assim:
+
+```bash
+psql $DATABASE_URL -v vera_user_id="$VERA_USER_ID"
+```
 
 ---
 
@@ -96,27 +108,25 @@ CREATE INDEX account_memberships_user_id_idx ON account_memberships(user_id);
 ### 2. Criar Account da Vera + Membership OWNER
 
 ```sql
--- Cria o Account
+-- Cria o Account. `has_meta`/`has_google` calculados a partir das
+-- integrations já existentes do user — sem suposição manual.
 INSERT INTO accounts (name, slug, niche_type, has_meta, has_google, created_by)
-SELECT
+VALUES (
   'Clínica Vívera',
   'vivera',
   'LOCAL_BUSINESS',
-  true,  -- confirmar: ela tem Meta conectado
-  (SELECT EXISTS(SELECT 1 FROM integration_credentials WHERE provider = 'GOOGLE_ADS' AND user_id = (SELECT id FROM users WHERE email = 'vera@vivera.com.br'))),
-  id
-FROM users WHERE email = 'vera@vivera.com.br'
-RETURNING id;
--- salvar o id retornado como :vera_account_id
+  EXISTS(SELECT 1 FROM integration_credentials WHERE provider = 'META_ADS'   AND user_id = :'vera_user_id'),
+  EXISTS(SELECT 1 FROM integration_credentials WHERE provider = 'GOOGLE_ADS' AND user_id = :'vera_user_id'),
+  :'vera_user_id'
+)
+RETURNING id \gset vera_account_
 
 -- Cria Membership OWNER
 INSERT INTO account_memberships (account_id, user_id, role, permissions)
-SELECT
-  :vera_account_id,
-  (SELECT id FROM users WHERE email = 'vera@vivera.com.br'),
-  'OWNER',
-  '{}'::jsonb;
+VALUES (:'vera_account_id', :'vera_user_id', 'OWNER', '{}'::jsonb);
 ```
+
+`\gset vera_account_` salva a coluna `id` retornada como variável `:vera_account_id` pros SQLs seguintes.
 
 ### 3. Adicionar coluna `account_id` nas tabelas scoped
 
@@ -131,17 +141,10 @@ ALTER TABLE user_preferences ADD COLUMN account_id UUID REFERENCES accounts(id) 
 ### 4. Backfill — todos os dados da Vera apontam pro account dela
 
 ```sql
-UPDATE clinics SET account_id = :vera_account_id
-WHERE owner_id = (SELECT id FROM users WHERE email = 'vera@vivera.com.br');
-
-UPDATE integration_credentials SET account_id = :vera_account_id
-WHERE user_id = (SELECT id FROM users WHERE email = 'vera@vivera.com.br');
-
-UPDATE integration_cache SET account_id = :vera_account_id
-WHERE user_id = (SELECT id FROM users WHERE email = 'vera@vivera.com.br');
-
-UPDATE user_preferences SET account_id = :vera_account_id
-WHERE user_id = (SELECT id FROM users WHERE email = 'vera@vivera.com.br');
+UPDATE clinics               SET account_id = :'vera_account_id' WHERE owner_id = :'vera_user_id';
+UPDATE integration_credentials SET account_id = :'vera_account_id' WHERE user_id = :'vera_user_id';
+UPDATE integration_cache     SET account_id = :'vera_account_id' WHERE user_id = :'vera_user_id';
+UPDATE user_preferences      SET account_id = :'vera_account_id' WHERE user_id = :'vera_user_id';
 ```
 
 ### 5. Validação imediata (ainda dentro da transaction)
@@ -216,17 +219,21 @@ Tempo de rollback: ~5 minutos. Avisar Vera de outro horário.
 
 ## Pós-migration: garantir staff Safira
 
-Staff Safira **NÃO precisa** de AccountMembership — o `AccountScopedGuard` faz bypass com base em `User.roles.includes('safira_staff')`. Basta garantir que a flag exista pros users de staff:
+Staff Safira **NÃO precisa** de AccountMembership — o `AccountScopedGuard` faz bypass com base em `User.roles.includes('safira_staff')`. Basta garantir que a flag exista pros users de staff.
+
+Pra cada staff a ser adicionado (CEO informa a lista na janela de execução):
 
 ```sql
--- User Guilherme (se não existe, criar; se existe, adicionar flag)
+-- Exemplo: Guilherme. Substituir email conforme necessário.
 INSERT INTO users (email, name, password_hash, roles)
-VALUES ('guilherme@agenciasafira.com.br', 'Guilherme Andrade', '<bcrypt>', '{user,safira_staff}')
+VALUES (:'staff_email', :'staff_name', :'staff_bcrypt_hash', '{user,safira_staff}')
 ON CONFLICT (email) DO UPDATE
   SET roles = ARRAY(SELECT DISTINCT unnest(users.roles || ARRAY['safira_staff']));
 ```
 
-Repetir pra cada staff adicional. **Zero memberships criados** — o bypass no guard resolve.
+Pra gerar `password_hash` temporário e já forçar reset no primeiro login, emitir token de invite em vez de senha (ver Fase 3, invite flow).
+
+**Zero memberships criados** — o bypass no guard resolve.
 
 Após subir o admin UI, gerenciamento de staff (adicionar/remover flag) acontece via tela `/admin/staff` (ticket futuro).
 
