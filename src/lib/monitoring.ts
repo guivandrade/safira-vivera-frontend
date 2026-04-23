@@ -1,19 +1,9 @@
 /**
  * Ponto único de captura de erros e eventos pra observabilidade.
  *
- * Hoje é stub: em dev loga no console, em prod é no-op silencioso.
- *
- * Para ativar Sentry (ou outro provider) sem mexer em chamadores:
- * 1. `npm i @sentry/nextjs` e rodar `npx @sentry/wizard@latest -i nextjs`
- * 2. No layout raiz (ou instrumentation.ts), chame `registerMonitoringProvider`
- *    com funções do Sentry:
- *    ```
- *    import * as Sentry from '@sentry/nextjs';
- *    registerMonitoringProvider({
- *      captureException: (err, ctx) => Sentry.captureException(err, { extra: ctx }),
- *      captureMessage: (msg, level) => Sentry.captureMessage(msg, level),
- *    });
- *    ```
+ * O bridge com Sentry vive em `src/providers/monitoring-bridge.tsx` e é
+ * registrado automaticamente no `RootLayout`. Se `NEXT_PUBLIC_SENTRY_DSN`
+ * não estiver setado, tudo cai no stub abaixo (console em dev, no-op em prod).
  */
 
 export interface MonitoringContext {
