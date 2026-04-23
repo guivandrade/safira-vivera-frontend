@@ -41,7 +41,7 @@ export function LoadMoreButton({
           type="button"
           onClick={onClick}
           disabled={isLoading}
-          className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? 'Carregando...' : 'Carregar mais'}
         </button>

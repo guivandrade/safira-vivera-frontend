@@ -39,14 +39,15 @@ export function OrphanAccessScreen() {
           </svg>
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-ink">Sem acesso ativo</h1>
+          <h1 className="text-xl font-semibold text-ink">Você ainda não tem acesso</h1>
           <p className="mt-2 text-sm text-ink-muted">
-            Sua conta existe mas não está associada a nenhum negócio ativo no
-            momento. Isso pode acontecer se você foi removido do acesso ou
-            se a empresa que te convidou arquivou a conta.
+            Seu login está funcionando, mas ele ainda não foi liberado pra nenhum
+            negócio. Isso normalmente acontece quando a liberação foi removida ou
+            o cliente arquivou o acesso.
           </p>
           <p className="mt-3 text-sm text-ink-muted">
-            Entre em contato com quem te convidou, ou com o suporte da Safira.
+            Peça a liberação de novo pra quem te enviou o convite, ou fale com o
+            time da Safira.
           </p>
         </div>
         <button

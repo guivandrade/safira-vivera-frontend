@@ -68,7 +68,7 @@ export function DataTablePagination({ page, pageSize, total, onPageChange }: Dat
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}
-          className="rounded border border-line px-2 py-1 text-xs hover:bg-surface-subtle disabled:opacity-40"
+          className="rounded border border-line px-2 py-1 text-xs hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
         >
           Anterior
         </button>
@@ -79,7 +79,7 @@ export function DataTablePagination({ page, pageSize, total, onPageChange }: Dat
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
-          className="rounded border border-line px-2 py-1 text-xs hover:bg-surface-subtle disabled:opacity-40"
+          className="rounded border border-line px-2 py-1 text-xs hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
         >
           Próxima
         </button>
