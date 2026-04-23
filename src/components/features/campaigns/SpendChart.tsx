@@ -64,7 +64,7 @@ export function SpendChart({ data, platformFilter = 'all', onBarClick, showCompa
 
   const description = buildDescription(platformFilter, showComparison, !!onBarClick);
 
-  const handleBarClick = (payload: any) => {
+  const handleBarClick = (payload: { monthIso?: string } | undefined) => {
     if (onBarClick && payload?.monthIso) onBarClick(payload.monthIso);
   };
 

@@ -31,8 +31,31 @@ export function FreshnessIndicator({
 }: FreshnessIndicatorProps) {
   const [, force] = useState(0);
   useEffect(() => {
-    const i = setInterval(() => force((n) => n + 1), 30_000);
-    return () => clearInterval(i);
+    // Pausa o tick quando a aba está oculta — economiza CPU/bateria em mobile
+    // e evita trabalho inútil; retoma imediatamente quando o usuário volta.
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (interval != null) return;
+      interval = setInterval(() => force((n) => n + 1), 30_000);
+    };
+    const stop = () => {
+      if (interval == null) return;
+      clearInterval(interval);
+      interval = null;
+    };
+    const handleVisibility = () => {
+      if (document.hidden) stop();
+      else {
+        force((n) => n + 1);
+        start();
+      }
+    };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      stop();
+    };
   }, []);
 
   if (!updatedAt) return null;

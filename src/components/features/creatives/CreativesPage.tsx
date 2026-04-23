@@ -410,7 +410,14 @@ function CreativeThumb({ row, size }: { row: CreativeRow; size?: number }) {
   if (row.thumbnailUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={row.thumbnailUrl} alt="" style={style} className={className + ' object-cover'} />
+      <img
+        src={row.thumbnailUrl}
+        alt={`Miniatura do criativo ${row.name}`}
+        loading="lazy"
+        decoding="async"
+        style={style}
+        className={className + ' object-cover'}
+      />
     );
   }
   return (

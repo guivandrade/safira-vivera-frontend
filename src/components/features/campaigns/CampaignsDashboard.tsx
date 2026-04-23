@@ -7,6 +7,7 @@ import { useGoogleAdsStatus } from '@/hooks/use-integration-status';
 import { useFiltersStore } from '@/stores/filters-store';
 import { useToast } from '@/providers/toast-provider';
 import { apiClient } from '@/lib/api-client';
+import { getErrorMessage } from '@/lib/errors';
 import { CampaignSummary, MonthlyData } from '@/types/campaigns';
 import { formatMonthShort } from '@/lib/formatters';
 import { ChartsSkeleton, KpiCardsSkeleton, TableSkeleton } from './CampaignsSkeleton';
@@ -96,9 +97,12 @@ export function CampaignsDashboard() {
       const response = await apiClient.get<{ authUrl: string }>(
         '/integrations/google-ads/oauth/authorize',
       );
+      if (!response.data?.authUrl) {
+        throw new Error('Resposta inválida do servidor: authUrl ausente.');
+      }
       window.location.href = response.data.authUrl;
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erro ao iniciar conexão com Google Ads');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao iniciar conexão com Google Ads'));
       setIsConnecting(false);
     }
   };

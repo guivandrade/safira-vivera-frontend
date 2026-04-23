@@ -63,7 +63,7 @@ export function ConversionsChart({ data, platformFilter = 'all', onBarClick, sho
 
   const description = buildDescription(platformFilter, showComparison, !!onBarClick);
 
-  const handleBarClick = (payload: any) => {
+  const handleBarClick = (payload: { monthIso?: string } | undefined) => {
     if (onBarClick && payload?.monthIso) onBarClick(payload.monthIso);
   };
 
