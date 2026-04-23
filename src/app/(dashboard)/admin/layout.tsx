@@ -13,7 +13,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div
+          className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-accent"
+          role="status"
+          aria-label="Verificando acesso"
+        />
+      </div>
+    );
+  }
 
   if (!user?.isSafiraStaff) {
     router.replace('/dashboard');
