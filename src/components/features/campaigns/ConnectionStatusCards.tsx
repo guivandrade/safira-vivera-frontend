@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { apiClient } from '@/lib/api-client';
+import { getErrorMessage } from '@/lib/errors';
 import {
   useDisconnectGoogleAds,
   useGoogleAdsStatus,
@@ -39,9 +40,12 @@ export function ConnectionStatusCards() {
       const response = await apiClient.get<{ authUrl: string }>(
         '/integrations/google-ads/oauth/authorize',
       );
+      if (!response.data?.authUrl) {
+        throw new Error('Resposta inválida do servidor: authUrl ausente.');
+      }
       window.location.href = response.data.authUrl;
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erro ao conectar Google Ads');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao conectar Google Ads'));
       setConnecting(false);
     }
   };
@@ -52,8 +56,8 @@ export function ConnectionStatusCards() {
       await disconnectMutation.mutateAsync();
       await refetch();
       toast.success('Google Ads desconectado');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erro ao desconectar Google Ads');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao desconectar Google Ads'));
     }
   };
 

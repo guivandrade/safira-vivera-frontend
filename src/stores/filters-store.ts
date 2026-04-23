@@ -47,12 +47,14 @@ export const useFiltersStore = create<FiltersState>()(
         includeBoosts: state.includeBoosts,
         includeInactive: state.includeInactive,
       }),
-      migrate: (persisted: any) => {
-        const legacy = persisted?.period?.preset;
-        if (legacy && !['today', 'last-7d', 'this-month', 'last-90d', 'last-180d', 'this-year', 'custom'].includes(legacy)) {
-          return { ...persisted, period: defaultPeriod };
+      migrate: (persisted: unknown) => {
+        const state = (persisted ?? {}) as Partial<FiltersState>;
+        const legacy = state.period?.preset;
+        const validPresets = ['today', 'last-7d', 'this-month', 'last-90d', 'last-180d', 'this-year', 'custom'];
+        if (legacy && !validPresets.includes(legacy)) {
+          return { ...state, period: defaultPeriod };
         }
-        return persisted;
+        return state;
       },
       version: 2,
     },

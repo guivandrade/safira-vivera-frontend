@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { classifyError, getErrorMessage } from '@/lib/errors';
 
 interface LoginResponse {
   access_token: string;
@@ -14,6 +15,19 @@ interface LoginResponse {
     email: string;
     name: string;
   };
+}
+
+/**
+ * Aceita só paths internos relativos. Rejeita URLs absolutas,
+ * protocol-relative (`//evil.com`) e backslash (`/\\evil.com`)
+ * para evitar open redirect via ?returnUrl=.
+ */
+function sanitizeReturnUrl(value: string | null): string {
+  const fallback = '/campanhas';
+  if (!value) return fallback;
+  if (!value.startsWith('/')) return fallback;
+  if (value.startsWith('//') || value.startsWith('/\\')) return fallback;
+  return value;
 }
 
 export default function LoginPage() {
@@ -27,7 +41,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') || '/campanhas';
+  const returnUrl = sanitizeReturnUrl(searchParams.get('returnUrl'));
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,10 +65,21 @@ function LoginForm() {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.user));
 
       router.push(returnUrl);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        (err?.response?.status === 401 ? 'Email ou senha incorretos' : 'Erro ao fazer login');
+    } catch (err: unknown) {
+      const kind = classifyError(err);
+      const backendMsg = getErrorMessage(err, '');
+      let message: string;
+      if (backendMsg) {
+        message = backendMsg;
+      } else if (kind === 'network') {
+        message = 'Não conseguimos contato com o servidor. Verifique sua conexão.';
+      } else if (kind === 'server') {
+        message = 'O sistema está temporariamente indisponível. Tente em alguns minutos.';
+      } else if (kind === 'unauthorized') {
+        message = 'Email ou senha incorretos.';
+      } else {
+        message = 'Erro ao fazer login.';
+      }
       setError(message);
     } finally {
       setIsLoading(false);
@@ -62,21 +87,24 @@ function LoginForm() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-50 to-white">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-surface-muted p-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <Link href="/" className="text-3xl font-bold text-gray-900 hover:text-indigo-600 transition-colors">
+          <Link
+            href="/"
+            className="text-3xl font-bold text-ink transition-colors hover:text-accent"
+          >
             Vívera
           </Link>
-          <p className="mt-2 text-gray-600">Acesse sua conta</p>
+          <p className="mt-2 text-sm text-ink-muted">Acesse sua conta</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-lg shadow-lg p-8 space-y-6"
+          className="space-y-6 rounded-lg border border-line bg-surface p-8 shadow-card"
         >
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className="mb-2 block text-sm font-medium text-ink">
               Email
             </label>
             <input
@@ -87,13 +115,13 @@ function LoginForm() {
               required
               autoComplete="email"
               disabled={isLoading}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
+              className="w-full rounded-lg border border-line bg-surface px-4 py-3 text-ink outline-none transition focus:border-transparent focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:bg-surface-subtle"
               placeholder="voce@exemplo.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="password" className="mb-2 block text-sm font-medium text-ink">
               Senha
             </label>
             <div className="relative">
@@ -105,7 +133,7 @@ function LoginForm() {
                 required
                 autoComplete="current-password"
                 disabled={isLoading}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full rounded-lg border border-line bg-surface px-4 py-3 pr-12 text-ink outline-none transition focus:border-transparent focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:bg-surface-subtle"
                 placeholder="••••••••"
               />
               <button
@@ -113,12 +141,13 @@ function LoginForm() {
                 onClick={() => setShowPassword((prev) => !prev)}
                 disabled={isLoading}
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition p-1"
+                aria-pressed={showPassword}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-ink-muted transition hover:text-ink"
               >
                 {showPassword ? (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="w-5 h-5"
+                    className="h-5 w-5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -133,7 +162,7 @@ function LoginForm() {
                 ) : (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="w-5 h-5"
+                    className="h-5 w-5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -158,7 +187,7 @@ function LoginForm() {
           {error && (
             <div
               role="alert"
-              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"
+              className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
             >
               {error}
             </div>
@@ -167,13 +196,13 @@ function LoginForm() {
           <button
             type="submit"
             disabled={isLoading || !email || !password}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
+            className="w-full rounded-lg bg-accent py-3 font-semibold text-accent-fg transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-ink-subtle">
           Dashboard de Campanhas — Meta Ads e Google Ads
         </p>
       </div>

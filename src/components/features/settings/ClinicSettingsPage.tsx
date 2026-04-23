@@ -5,6 +5,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useClinic, useUpdateClinic } from '@/hooks/use-clinic';
 import { useToast } from '@/providers/toast-provider';
+import { getErrorMessage } from '@/lib/errors';
 import { isClinicConfigured } from '@/types/api';
 
 interface FormState {
@@ -61,9 +62,9 @@ export function ClinicSettingsPage() {
       });
       toast.success('Configurações da clínica salvas');
       setDirty(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
-        err?.response?.data?.message || 'Erro ao salvar — verifique o endereço e tente novamente',
+        getErrorMessage(err, 'Erro ao salvar — verifique o endereço e tente novamente'),
       );
     }
   };

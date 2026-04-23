@@ -8,13 +8,19 @@ const nextConfig = {
   // Server Components by default (App Router)
   reactStrictMode: true,
 
-  // Images optimization
+  // Images optimization. Restringimos hostnames para não aceitar imagem de
+  // qualquer host via <Image>: se um dia um criativo trouxer URL fora dessa
+  // lista, prefira <img> com loading="lazy" + alt descritivo.
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      // Meta CDNs (thumbnails de anúncios / imagens de post)
+      { protocol: 'https', hostname: '**.fbcdn.net' },
+      { protocol: 'https', hostname: 'scontent.cdninstagram.com' },
+      { protocol: 'https', hostname: '**.cdninstagram.com' },
+      { protocol: 'https', hostname: 'lookaside.fbsbx.com' },
+      // Google Ads (assets de criativo)
+      { protocol: 'https', hostname: 'tpc.googlesyndication.com' },
+      { protocol: 'https', hostname: 'googleads.g.doubleclick.net' },
     ],
   },
 
