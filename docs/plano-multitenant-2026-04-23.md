@@ -1,6 +1,6 @@
 # Plano de Transição — Single-Tenant → Multi-Tenant Safira
 
-**Data:** 2026-04-23 · **Autor:** Diego Engenharia (Tech Lead) · **Estado:** Aprovado — pronto pra execução (Fase 0)
+**Data:** 2026-04-23 · **Autor:** Diego Engenharia (Tech Lead) · **Estado:** Em execução — escopo simplificado 2026-04-23 tarde (ver §Escopo reduzido)
 
 ---
 
@@ -30,18 +30,39 @@ Transformar o `safira-vivera-*` de um dashboard single-tenant (Vera/Clínica Ví
 
 ---
 
-## Decisões confirmadas pelo CEO (2026-04-23)
+## Decisões iniciais do CEO (2026-04-23 manhã)
 
 1. ✅ **Granularidade de permissões:** página + 4 métricas sensíveis configuráveis.
-   As 4 métricas sensíveis são: **`spend`** (gasto em mídia), **`cpa`** (custo por conversão), **`roas`** (retorno sobre investimento), **`cpm`** (custo por mil impressões). Essas são as 4 que o admin Safira pode esconder por usuário quando dá acesso a um `MEMBER` do cliente.
-
-2. ✅ **Whitelabel:** v2 (fora do MVP). Brand Safira visível no MVP.
-
-3. ✅ **Billing:** incluído no serviço da agência. Sem Stripe/Asaas no MVP.
-
+2. ✅ **Whitelabel:** v2 (fora do MVP).
+3. ✅ **Billing:** incluído no serviço da agência.
 4. ✅ **Onboarding:** invite link por email + reset de senha no primeiro login.
+5. ✅ **Isolation absoluta:** cliente A nunca vê B.
 
-5. ✅ **Isolation absoluta:** cliente A nunca vê B. Sem exceção. Tenant-scope obrigatório em 100% dos queries.
+## Escopo reduzido (CEO, 2026-04-23 tarde)
+
+Depois de executar boa parte do plano, o CEO pediu simplificação do modelo:
+
+> *"Meu cliente pode ter um acesso único, sem adicionar funcionários. Preciso que staff veja todos os clientes e que os clientes não vejam os de outros."*
+
+O que isso muda:
+
+| Item original | Novo status |
+|---|---|
+| Roles `MEMBER` e `ADMIN` (com permissions configuráveis por user) | **Mantidos no schema, reservados pra v2.** Zero uso no MVP. |
+| 4 métricas sensíveis configuráveis (`view:metrics:*`) | **Infraestrutura mantida** (já entregue nos PRs #34 e #52), zero uso prático no MVP. OWNER sempre vê tudo. Staff bypass sempre vê tudo. |
+| Invite link por email + reset no primeiro login | **Removido.** Staff cria user OWNER com senha inicial e manda por WhatsApp/email manual. |
+| Admin UI "Membros" (listar, convidar, editar role) | **Removido.** |
+| Admin UI "Permissões por user" | **Removido.** |
+| Sistema de email transacional | **Removido.** |
+
+Permanece exatamente igual:
+- Schema `Account` + `AccountMembership` (cada account terá 1 membership OWNER)
+- `AccountScopedGuard` + staff bypass (crítico pra staff ver todos)
+- `PermissionsGuard` (infraestrutura, não gera rejeições no MVP)
+- Isolation absoluta (cliente A nunca vê B)
+- Impersonate pra staff ("entrar como X")
+
+**Timeline atualizada: 3-5 semanas** (antes 4-8). Ganho vem da Fase 3 enxuta.
 
 ---
 
@@ -204,28 +225,35 @@ User pode ficar "órfão" (último membership removido, todos os accounts dele a
 
 **Dono:** Leticia (frontend) + Nina (integrações, revisar).
 
-### Fase 3 — Admin UI (3-4 dias)
-Novas telas em `src/app/(admin)/`:
+### Fase 3 — Admin UI enxuta (2-3 dias)
+Novas telas em `src/app/(admin)/`. Escopo reduzido pós-simplificação do CEO — sem gestão de membros/permissões, já que cada account tem 1 OWNER só:
+
 - [ ] `/admin/clientes` — lista paginada de accounts, busca, status, última atividade
-- [ ] `/admin/clientes/novo` — formulário de criação (nome, slug, tipo de nicho, features Meta/Google)
-- [ ] `/admin/clientes/[slug]` — detalhes, tabs: Geral, Membros, Integrações, Permissões, Atividade
-- [ ] `/admin/clientes/[slug]/membros` — listar users, convidar novo (gera invite link), editar role/permissões por user
-- [ ] `/admin/clientes/[slug]/integracoes` — conectar Meta/Google em nome do cliente (OAuth fluxo delegado)
+- [ ] `/admin/clientes/novo` — formulário de criação em **uma tela só**:
+  - Nome, slug, tipo de nicho, features Meta/Google
+  - **+ Email e senha inicial do OWNER** (criado junto no mesmo POST)
+  - Staff copia a senha e manda pro cliente por WhatsApp
+- [ ] `/admin/clientes/[slug]` — detalhes (aba única):
+  - Status + toggle ACTIVE/SUSPENDED/ARCHIVED
+  - Tipo de nicho, features Meta/Google
+  - Botão "Entrar como" (dispara impersonate)
+  - Botão "Resetar senha do OWNER" (gera nova senha, staff copia e manda)
+  - Info da integração Meta/Google (se conectadas) + botões delegados
+  - Atividade recente (últimos logins, ações do OWNER — MVP simples)
 
-**Gate:** toda rota em `(admin)` exige `role = AGENCY_STAFF` OU `roles.includes('safira_staff')` no JWT. `AgencyStaffGuard` no layout.
+**Gate:** toda rota em `(admin)` exige flag `safira_staff` em `User.roles`. `AgencyStaffGuard` no layout.
 
-**Dono:** Leticia (frontend) + Rafa (fullstack pra endpoints novos).
+**Dono:** Leticia (frontend) + Rafa (endpoints novos: `POST /admin/accounts`, `POST /admin/accounts/:id/reset-owner-password`, `POST /auth/impersonate/:accountId`).
 
-### Fase 4 — Permission enforcement ponta-a-ponta (3-4 dias)
-- [ ] Backend: `PermissionsGuard` com decorator `@RequirePermission('view:spend')`
-- [ ] Backend: cada controller sensível anotado
-- [ ] Frontend: hook `useCan(permission)` lê JWT claims
-- [ ] Frontend: componente `<Can permission="...">` wrapping elementos sensíveis
-- [ ] Esconde métricas sensíveis do KPI card quando user sem `view:spend`
-- [ ] Esconde itens do sidebar por permissão (`view:campaigns` → esconde /campanhas)
-- [ ] Redireciona pra `/dashboard` se user tenta URL sem permissão
+### Fase 4 — Permission enforcement ponta-a-ponta ✅ ENTREGUE (PRs #34, #37, #51, #52)
+- [x] Backend: `PermissionsGuard` com decorator `@RequirePermission(...)` — [PR #34](https://github.com/guivandrade/safira-vivera-backend/pull/34)
+- [x] Backend: controllers de dados anotados — [PR #37](https://github.com/guivandrade/safira-vivera-backend/pull/37)
+- [x] Frontend: hook `useCan(permission)` — [PR #51](https://github.com/guivandrade/safira-vivera-frontend/pull/51)
+- [x] Frontend: `<Can permission="...">` — idem
+- [x] KpiCards escondem métricas sensíveis — [PR #52](https://github.com/guivandrade/safira-vivera-frontend/pull/52)
+- [x] Sidebar esconde itens sem permissão — [PR #51](https://github.com/guivandrade/safira-vivera-frontend/pull/51)
 
-**Dono:** Rafa (fullstack) + Sofia (review).
+**Observação pós-simplificação:** essa camada está completa, mas zero rejeições acontecem na prática — OWNER sempre vê tudo por default, staff sempre vê via bypass, não existe MEMBER. Infraestrutura fica pronta se um dia o escopo voltar a incluir members.
 
 ### Fase 5 — Templates por ICP (3-4 dias)
 - [ ] Preset **LOCAL_BUSINESS**: conversões = "mensagens WhatsApp" / "agendamentos"; mapa de bairros em destaque; termos "paciente/cliente" (já existe, refinar)
@@ -255,34 +283,38 @@ Novas telas em `src/app/(admin)/`:
 
 ---
 
-## Timeline realista
+## Timeline atualizada (pós-simplificação)
 
-| Semana | Entregas |
+| Dia | Entregas |
 |---|---|
-| 1 | Fase 0 (alinhamento + decisões) + começo Fase 1 (schema) |
-| 2 | Fase 1 (backend tenant-scope + migration Vera) + Fase 2 (desacoplamento) em paralelo |
-| 3 | Fase 3 (admin UI) |
-| 4 | Fase 4 (permissions ponta-a-ponta) |
-| 5 | Fase 5 (templates ICP) + Fase 6 (QA) |
-| 6 | Fase 6 fim + Fase 7 (deploy + piloto) |
+| **1 (23/04)** | ✅ Fase 0 docs · ✅ Fase 1 PRs #31-#37 + #51 + #52 (schema, guards, permissions, OAuth accountId, controllers gated, frontend AuthProvider+Can) |
+| 2 | PR 1.3.c.2 — services propagam accountId (staff vê dados reais) |
+| 3 | PR 1.5 — E2E isolation suite + STRICT_TENANT_SCOPE em dev/CI |
+| 4-5 | Fase 3 admin UI enxuta (lista + criar + detalhes + impersonate) |
+| 6 | Fase 5 templates por nicho (LOCAL/INFOPRODUCT/ECOMMERCE) |
+| 7 | Fase 6 QA + deploy produção + piloto |
 
-**Cenário otimista:** 4-5 semanas (trabalho focado, decisões rápidas).
-**Cenário realista:** 6-8 semanas (ajustes de escopo, bugs inesperados no tenant-scope, feedback de cliente piloto).
-**Cenário com whitelabel + billing:** +3-4 semanas.
+**Cenário otimista:** **1 semana** (trabalho focado, decisões rápidas).
+**Cenário realista:** **2 semanas** (bugs inesperados, ajuste de UX, primeiros clientes reais).
+**Cenário com whitelabel + billing:** +2-3 semanas (v2).
+
+**Redução vs plano original: ~50%**, principalmente por remoção de invite flow, member management UI, email transacional e permission-editing UI.
 
 ---
 
 ## O que NÃO entra no MVP
 
 Ficam pra v2 explicitamente:
+- **Múltiplos users por account** — cliente tem só 1 acesso (OWNER) no MVP
+- **Convite de funcionários** — sem invite flow, sem email transacional
+- **Editar permissões por user** — não precisa porque não existem MEMBERs
 - **Whitelabel** (cor, logo, domínio custom por cliente)
 - **Billing/Assinatura** (Stripe/Asaas, controle de mensalidade)
-- **Audit log** (quem fez o quê quando — só log básico)
+- **Audit log detalhado** (quem fez o quê quando — só log básico no MVP)
 - **Export automático** (relatório mensal PDF enviado por email)
 - **Alertas proativos** (continua no backlog do audit 18/04)
 - **SSO / Google Login** (só email/senha no MVP)
-- **Custom roles** (só os 4 fixos: OWNER, ADMIN, MEMBER, AGENCY_STAFF)
-- **Multi-account por user** além de staff Safira (ex: um sócio em 2 negócios diferentes)
+- **Custom roles** além de OWNER (ADMIN/MEMBER existem no enum mas sem uso)
 
 Cada um desses adiciona 3 dias a 2 semanas. Por isso fora do MVP.
 
@@ -301,14 +333,19 @@ Cada um desses adiciona 3 dias a 2 semanas. Por isso fora do MVP.
 
 ---
 
-## Próximo passo
+## Próximo passo (pós-simplificação)
 
-Fase 0 **pronta pra ser aprovada**. Falta só:
+**Crítico pra staff ver dados do cliente:**
 
-1. CEO aprova PR #50 → merge
-2. Bruno pega o ticket [fase-1-ticket-backend.md](multitenant/fase-1-ticket-backend.md) e começa execução
+1. **PR 1.3.c.2** — migrar services (Campaigns/Creatives/Keywords/Geography/Instagram + providers) pra propagar `accountId`. Services chamam `GoogleAdsClient.searchStreamForAccount(gaql, accountId)` em vez de `searchStream(gaql, userId)`. Cache passa `{ userId, accountId }`. Sem isso, staff autentica mas não vê dados do cliente (busca credential do próprio staff que não existe). ~10 arquivos.
 
-Email da Vera é descoberto dinamicamente no primeiro passo da migration (query + `\gset`). Zero hardcoded.
+2. **PR 1.5** — suite E2E de isolation (cliente A ≠ cliente B) + subir Prisma middleware pra `strict` em dev/CI.
+
+**Depois, Fase 3 admin UI enxuta:**
+
+3. `/admin/clientes` listar + criar (cliente novo com senha inicial) + detalhes + impersonate.
+
+**Email da Vera** é descoberto dinamicamente no primeiro passo da migration (query + `\gset`). Zero hardcoded.
 
 **Ordem de execução da Fase 1** (paralelizável parcial):
 - PR 1.1: schema Prisma + migration (Andre + Bruno)

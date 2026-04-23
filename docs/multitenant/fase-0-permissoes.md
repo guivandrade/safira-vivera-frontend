@@ -2,6 +2,8 @@
 
 **Referência:** [plano-multitenant-2026-04-23.md](../plano-multitenant-2026-04-23.md)
 
+> **Status pós-simplificação (2026-04-23 tarde):** o catálogo abaixo continua **válido no código** — toda a infraestrutura de `ROLE_DEFAULTS` + `computePermissions` + `PermissionsGuard` + `@RequirePermission` foi entregue (PRs #34 e #37). Na prática, porém, o MVP **só usa OWNER e `safira_staff` bypass**. ADMIN e MEMBER permanecem no enum e nas matrizes reservados pra v2 (quando clientes puderem ter funcionários). Zero rejeições de permissão esperadas pra users OWNER reais do MVP — OWNER tem tudo por default.
+
 ---
 
 ## Modelo: 3 roles + 1 flag global
