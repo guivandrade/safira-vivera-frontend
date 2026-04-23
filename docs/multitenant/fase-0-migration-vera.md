@@ -6,7 +6,7 @@
 
 ## Contexto
 
-Hoje a Vera tem 1 `User` no banco de produção com email `vera@vivera.com.br` (ajustar se diferente). Esse user tem:
+Hoje a Vera tem 1 `User` no banco de produção. Esse user tem:
 - N `Clinic` via `owner_id`
 - N `IntegrationCredential` via `user_id`
 - N `IntegrationCache` via `user_id`
@@ -14,6 +14,20 @@ Hoje a Vera tem 1 `User` no banco de produção com email `vera@vivera.com.br` (
 - N `RevokedToken` via `user_id`
 
 Depois da migration multi-tenant, **toda essa cadeia** precisa passar a ser scoped por `account_id`, com o account da Vera sendo o primeiro registro de `Account`.
+
+## ⚠️ TBD antes da migration
+
+**Email do user da Vera no banco.** Nos SQLs abaixo usei placeholder `vera@vivera.com.br` — precisa ser substituído pelo email real. Pra descobrir:
+
+```sql
+SELECT id, email, name, created_at
+FROM users
+WHERE deleted_at IS NULL
+ORDER BY created_at ASC
+LIMIT 10;
+```
+
+O registro mais antigo que não seja staff Safira é a Vera. Confirmar com o CEO antes de rodar qualquer passo em produção.
 
 ---
 
@@ -45,7 +59,9 @@ BEGIN;
 
 CREATE TYPE "NicheType" AS ENUM ('LOCAL_BUSINESS', 'INFOPRODUCT', 'ECOMMERCE');
 CREATE TYPE "AccountStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'ARCHIVED');
-CREATE TYPE "MembershipRole" AS ENUM ('OWNER', 'ADMIN', 'MEMBER', 'AGENCY_STAFF');
+-- MembershipRole: apenas 3 roles. Staff Safira é flag global em User.roles
+-- (ver plano mestre §Arquitetura), não MembershipRole.
+CREATE TYPE "MembershipRole" AS ENUM ('OWNER', 'ADMIN', 'MEMBER');
 
 CREATE TABLE accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -198,26 +214,21 @@ Tempo de rollback: ~5 minutos. Avisar Vera de outro horário.
 
 ---
 
-## Pós-migration: adicionar staff Safira
+## Pós-migration: garantir staff Safira
 
-Após migration bem-sucedida, criar os users da Safira como `AGENCY_STAFF` em todos os accounts (só a Vera por enquanto):
+Staff Safira **NÃO precisa** de AccountMembership — o `AccountScopedGuard` faz bypass com base em `User.roles.includes('safira_staff')`. Basta garantir que a flag exista pros users de staff:
 
 ```sql
--- User Guilherme (já existe?)
+-- User Guilherme (se não existe, criar; se existe, adicionar flag)
 INSERT INTO users (email, name, password_hash, roles)
 VALUES ('guilherme@agenciasafira.com.br', 'Guilherme Andrade', '<bcrypt>', '{user,safira_staff}')
-ON CONFLICT (email) DO NOTHING;
-
--- AGENCY_STAFF em todos os accounts
-INSERT INTO account_memberships (account_id, user_id, role)
-SELECT a.id, u.id, 'AGENCY_STAFF'
-FROM accounts a
-CROSS JOIN users u
-WHERE u.email = 'guilherme@agenciasafira.com.br'
-ON CONFLICT (account_id, user_id) DO NOTHING;
+ON CONFLICT (email) DO UPDATE
+  SET roles = ARRAY(SELECT DISTINCT unnest(users.roles || ARRAY['safira_staff']));
 ```
 
-Repetir pra cada staff adicional. Cadastro via admin UI depois que ela subir.
+Repetir pra cada staff adicional. **Zero memberships criados** — o bypass no guard resolve.
+
+Após subir o admin UI, gerenciamento de staff (adicionar/remover flag) acontece via tela `/admin/staff` (ticket futuro).
 
 ---
 

@@ -31,7 +31,7 @@ Wireframes em ASCII art pra validar estrutura antes de codar. Visual final segue
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Acesso:** só `AGENCY_STAFF`. Se qualquer outro user tentar abrir `/admin/*`, redireciona pra `/dashboard`.
+**Acesso:** só users com flag `safira_staff` em `User.roles`. Qualquer outro user que tentar abrir `/admin/*` é redirecionado pra `/dashboard`.
 
 ---
 
@@ -105,7 +105,7 @@ Wireframes em ASCII art pra validar estrutura antes de codar. Visual final segue
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Botão "Entrar como"** no canto: dispara impersonate (POST /auth/impersonate/:accountId). JWT novo é emitido com `role: AGENCY_STAFF` e `account.id` do cliente. Banner amarelo no topo do dashboard: *"Você está visualizando como Clínica Vívera. [Sair]"*. Toda ação nesse modo vai pro audit log.
+**Botão "Entrar como"** no canto: dispara impersonate (`POST /auth/impersonate/:accountId`, requer flag `safira_staff`). JWT novo é emitido com `account.id` do cliente + claim `impersonatedBy: <staff_user_id>`. Banner amarelo no topo do dashboard: *"Você está visualizando como Clínica Vívera. [Sair]"*. Toda ação nesse modo vai pro audit log com o staff real.
 
 ---
 
@@ -243,7 +243,7 @@ Modal "Editar permissões": toggle por permissão. Só mostra as que fazem senti
 └──────────────────────────────────────────────────────┘
 ```
 
-Pra user comum que tem 1 account só, não mostra seletor (só o nome). Pra `AGENCY_STAFF`, sempre mostra — + opção "Todos os clientes" que leva pra `/admin/clientes`.
+Pra user comum que tem 1 account só, não mostra seletor (só o nome). Pra user com flag `safira_staff`, sempre mostra — + opção "Todos os clientes" que leva pra `/admin/clientes`.
 
 ---
 

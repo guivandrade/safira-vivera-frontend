@@ -97,11 +97,18 @@ enum MembershipRole {
   OWNER          // dono do negócio — acesso total ao próprio account
   ADMIN          // funcionário do cliente com permissão de gestão
   MEMBER         // funcionário do cliente com permissão limitada
-  AGENCY_STAFF   // staff Safira — lê todos, gerencia via admin UI
 }
 ```
 
-**User** continua existindo mas **perde a ligação direta com Clinic/Integrations/Cache** — esses passam a ser `accountId`-scoped. `User` vira só "identidade de login" + `roles` globais (só usados pra marcar `safira_staff` / `system`).
+**Staff Safira NÃO é MembershipRole.** Em vez disso, é uma flag global em
+`User.roles: string[]` contendo `'safira_staff'`. Isso evita ter que criar
+memberships pra cada staff toda vez que nasce um cliente novo. O
+`AccountScopedGuard` tem lógica de **bypass**: se o user tem
+`'safira_staff'` em `roles`, pode acessar qualquer `accountId` sem
+precisar de `AccountMembership`. Mesmo bypass no `PermissionsGuard`
+(staff tem todas as `view:*` e `manage:*`).
+
+**User** continua existindo mas **perde a ligação direta com Clinic/Integrations/Cache** — esses passam a ser `accountId`-scoped. `User` vira "identidade de login" + `roles` globais (`user`, `safira_staff`, `system`).
 
 ### Tenant-scope no backend
 
@@ -129,36 +136,53 @@ Toda query passa a filtrar por `accountId`. Implementado via:
 
 ### Permissões (RBAC + ABAC mínimo)
 
-**Matriz de permissões padrão por role:**
+**Matriz resumida** (detalhe completo em [fase-0-permissoes.md](multitenant/fase-0-permissoes.md)):
 
-| Permissão | OWNER | ADMIN | MEMBER | AGENCY_STAFF |
+| Permissão | OWNER | ADMIN | MEMBER | safira_staff (flag) |
 |---|---|---|---|---|
-| `view:dashboard` | ✓ | ✓ | ✓ | ✓ |
-| `view:campaigns` | ✓ | ✓ | ✓ | ✓ |
-| `view:spend` | ✓ | ✓ | (configurável) | ✓ |
-| `view:cpa_roas` | ✓ | ✓ | (configurável) | ✓ |
-| `view:creatives` | ✓ | ✓ | ✓ | ✓ |
-| `view:settings` | ✓ | ✓ | ✗ | ✓ |
-| `manage:integrations` | ✓ | ✗ | ✗ | ✓ |
-| `manage:users` | ✓ | ✗ | ✗ | ✓ |
-| `manage:billing` | ✓ | ✗ | ✗ | ✓ |
+| `view:dashboard`, `view:campaigns`, `view:creatives` | ✓ | ✓ | ✓ | ✓ (bypass) |
+| `view:metrics:{spend,cpa,roas,cpm}` | ✓ | ✓ | **config por user** | ✓ (bypass) |
+| `view:settings` | ✓ | ✓ | ✗ | ✓ (bypass) |
+| `manage:integrations`, `manage:users` | ✓ | ✗ | ✗ | ✓ (bypass) |
+| `agency:*` (listar clientes, criar, impersonate) | ✗ | ✗ | ✗ | ✓ |
 
-`AccountMembership.permissions` (JSON) permite **override por usuário**: admin vira `MEMBER` e dá `view:spend: false` pra alguém específico.
+`AccountMembership.permissions` (JSON) permite **override por usuário**: admin dá `view:metrics:spend: true` pra um MEMBER específico que precisa ver gasto.
 
-Hook frontend: `const can = useCan(); can('view:spend') // true/false`. Componente: `<Can permission="view:spend">...</Can>`.
+Hook frontend: `const { can } = usePermissions(); can('view:metrics:spend') // true/false`.
+Componente: `<Can permission="view:metrics:spend">...</Can>`.
+
+### Como permissões atualizam ao vivo
+
+Se admin tira `view:metrics:spend` de um user logado agora, o que acontece?
+
+**Decisão:** JWT carrega apenas `accountId` + `membershipRole` (dados estáveis). **Permissões efetivas vêm do endpoint `/auth/me`** que o frontend chama a cada load e cacheia com `staleTime: 30s` via React Query. Guard backend também re-consulta no banco em cada request (barato com índice em `account_memberships`).
+
+Trade-off: delay de até 30s pro cliente "perder" uma permissão revogada. Aceitável — a alternativa (forçar re-login) é UX ruim pro caso comum (admin só mudando visibilidade de 1 métrica).
+
+Pra mudança crítica (role OWNER→MEMBER, remover do account), backend invoca `user.tokensInvalidatedAt = now()` já existente — força re-login.
+
+### User sem AccountMembership
+
+User pode ficar "órfão" (último membership removido, todos os accounts dele arquivados). No login:
+1. `/auth/me` retorna `accounts: []`
+2. Frontend mostra tela "Seu acesso foi revogado. Entre em contato com quem te convidou."
+3. Não redireciona pro dashboard (ia quebrar por falta de accountId)
 
 ---
 
 ## Fases de entrega
 
-### Fase 0 — Planejamento + alinhamento (2-3 dias)
-- [ ] Este documento aprovado por você
-- [ ] 5 decisões resolvidas (ver acima)
-- [ ] Design das 10-15 telas admin novas (wireframe ou baixa-fi)
-- [ ] Catálogo completo de permissões definido
-- [ ] Plano de migration da Vera (ela vira Account #1 com slug `vivera`)
+### Fase 0 — Planejamento + alinhamento (2-3 dias) ✅ QUASE PRONTO
+- [x] Plano mestre escrito
+- [x] 5 decisões resolvidas (ver acima)
+- [x] Wireframe ASCII das 12+ telas admin — [fase-0-wireframes-admin.md](multitenant/fase-0-wireframes-admin.md)
+- [x] Catálogo completo de permissões — [fase-0-permissoes.md](multitenant/fase-0-permissoes.md)
+- [x] Plano de migration da Vera — [fase-0-migration-vera.md](multitenant/fase-0-migration-vera.md)
+- [x] Ticket detalhado da Fase 1 — [fase-1-ticket-backend.md](multitenant/fase-1-ticket-backend.md)
+- [ ] **CEO confirma email da Vera** (placeholder `vera@vivera.com.br` é chute — precisa validar antes da migration)
+- [ ] Aprovação final no PR #50
 
-**Saída:** documento final de arquitetura + lista de tickets detalhados.
+**Saída:** 4 docs aprovados + ticket da Fase 1 pronto pro Bruno disparar.
 
 ### Fase 1 — Backend multi-tenant foundation (1 a 1,5 semana)
 - [ ] Schema migration: `Account`, `AccountMembership`, enums, field `accountId` em `Clinic`, `IntegrationCredential`, `IntegrationCache`, `UserPreferences`
@@ -280,9 +304,17 @@ Cada um desses adiciona 3 dias a 2 semanas. Por isso fora do MVP.
 
 ## Próximo passo
 
-1. Você responde as **5 decisões** acima
-2. Eu atualizo este documento com suas respostas
-3. Você aprova
-4. Abro os tickets da Fase 0 (wireframes + plano de migration)
+Fase 0 está **95% pronta**. Falta só:
 
-Depois que Fase 0 estiver pronta, começo a execução.
+1. CEO confirmar email da Vera no banco produção (precisa pro SQL da migration)
+2. CEO aprovar PR #50 → merge
+3. Bruno pega o ticket [fase-1-ticket-backend.md](multitenant/fase-1-ticket-backend.md) e começa execução
+
+**Ordem de execução da Fase 1** (paralelizável parcial):
+- PR 1.1: schema Prisma + migration (Andre + Bruno)
+- PR 1.2: `@CurrentAccount()` + `AccountScopedGuard` com staff bypass (Bruno + Sofia review)
+- PR 1.3: refactor services — auditoria de 100% dos queries adicionando `accountId` filter (Bruno)
+- PR 1.4: `PermissionsGuard` + `@RequirePermission` + `/auth/me` expandido (Bruno)
+- PR 1.5: E2E suite de isolation (Carla)
+
+**Paralelo no frontend:** Fase 2 (desacoplamento Meta/Google) — Leticia pode começar assim que 1.1 estiver mergeado.
