@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
+import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { getErrorMessage } from '@/lib/errors';
+import { useToast } from '@/providers/toast-provider';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface StoredUser {
   id?: string;
@@ -24,10 +28,19 @@ function getInitials(user: StoredUser | null): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
+function clearAuthStorage() {
+  localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.USER);
+}
+
 export function UserMenu() {
   const router = useRouter();
+  const toast = useToast();
   const [user, setUser] = useState<StoredUser | null>(null);
   const [open, setOpen] = useState(false);
+  const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,56 +64,123 @@ export function UserMenu() {
   }, [open]);
 
   const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.USER);
+    clearAuthStorage();
     router.push('/login');
+  };
+
+  const handleLogoutAllClick = () => {
+    setOpen(false);
+    setConfirmLogoutAll(true);
+  };
+
+  const performLogoutAll = async () => {
+    setLoggingOutAll(true);
+    try {
+      // Endpoint invalida todos os tokens emitidos até este momento (incluindo
+      // o que usamos aqui). Não precisamos esperar erro posterior — já
+      // limpamos storage e redirecionamos imediatamente após o 200.
+      await apiClient.post('/auth/logout-all');
+      clearAuthStorage();
+      toast.success('Você foi desconectado de todos os dispositivos.');
+      router.push('/login');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Não foi possível desconectar os dispositivos.'));
+      setLoggingOutAll(false);
+      setConfirmLogoutAll(false);
+    }
   };
 
   const displayName = user?.name || user?.email || 'Usuário';
   const displayEmail = user?.email || '';
 
   return (
-    <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className="flex items-center gap-2 rounded-md border border-line bg-surface px-1.5 py-1 text-sm text-ink hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-accent/40"
-      >
-        <span className="flex h-6 w-6 items-center justify-center rounded bg-accent text-[11px] font-semibold text-accent-fg">
-          {getInitials(user)}
-        </span>
-        <span className="hidden max-w-[140px] truncate pr-1 text-xs md:inline">{displayName}</span>
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          className={cn(
-            'absolute right-0 z-30 mt-2 w-64 overflow-hidden rounded-lg border border-line bg-surface shadow-lg',
-          )}
+    <>
+      <div className="relative" ref={containerRef}>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="flex items-center gap-2 rounded-md border border-line bg-surface px-1.5 py-1 text-sm text-ink hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-accent/40"
         >
-          <div className="border-b border-line px-4 py-3">
-            <p className="truncate text-sm font-medium text-ink">{displayName}</p>
-            {displayEmail && <p className="truncate text-xs text-ink-muted">{displayEmail}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle hover:text-ink"
-            role="menuitem"
+          <span className="flex h-6 w-6 items-center justify-center rounded bg-accent text-[11px] font-semibold text-accent-fg">
+            {getInitials(user)}
+          </span>
+          <span className="hidden max-w-[140px] truncate pr-1 text-xs md:inline">{displayName}</span>
+        </button>
+
+        {open && (
+          <div
+            role="menu"
+            className={cn(
+              'absolute right-0 z-30 mt-2 w-64 overflow-hidden rounded-lg border border-line bg-surface shadow-lg',
+            )}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <path d="M16 17l5-5-5-5" />
-              <path d="M21 12H9" />
-            </svg>
-            Sair
-          </button>
-        </div>
-      )}
-    </div>
+            <div className="border-b border-line px-4 py-3">
+              <p className="truncate text-sm font-medium text-ink">{displayName}</p>
+              {displayEmail && <p className="truncate text-xs text-ink-muted">{displayEmail}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle hover:text-ink"
+              role="menuitem"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                className="h-4 w-4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+              Sair
+            </button>
+            <div className="border-t border-line-subtle" />
+            <button
+              type="button"
+              onClick={handleLogoutAllClick}
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-danger/80 hover:bg-danger/5 hover:text-danger"
+              role="menuitem"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                className="h-4 w-4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 8a6 6 0 0 0-9.33-5" />
+                <path d="M20.12 9.88a6 6 0 0 1-.12 8.24" />
+                <path d="M3 12a9 9 0 0 0 9 9" />
+                <circle cx="12" cy="12" r="1" />
+                <path d="m4 4 16 16" />
+              </svg>
+              Sair de todos os dispositivos
+            </button>
+          </div>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={confirmLogoutAll}
+        title="Sair de todos os dispositivos?"
+        description="Isso vai desconectar você em todos os navegadores e apps onde está logado. Será necessário entrar de novo em cada um."
+        confirmLabel={loggingOutAll ? 'Saindo...' : 'Desconectar tudo'}
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={performLogoutAll}
+        onCancel={() => setConfirmLogoutAll(false)}
+      />
+    </>
   );
 }
