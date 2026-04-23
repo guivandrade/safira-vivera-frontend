@@ -8,15 +8,39 @@ interface PlatformTabsProps {
   value: PlatformFilter;
   onChange: (next: PlatformFilter) => void;
   lockedTo?: PlatformFilter;
+  /**
+   * Quais providers o account atual tem habilitados. Default: ambos. Quando
+   * só um está ativo, a aba do outro some e "Todas" é escondida (redundante).
+   * Quando nenhum está ativo, o componente não renderiza.
+   */
+  availableProviders?: ('meta' | 'google')[];
 }
 
-const options: { key: PlatformFilter; label: string; dotClass?: string }[] = [
+const baseOptions: { key: PlatformFilter; label: string; dotClass?: string }[] = [
   { key: 'all', label: 'Todas' },
   { key: 'meta', label: 'Meta', dotClass: 'bg-meta' },
   { key: 'google', label: 'Google', dotClass: 'bg-google' },
 ];
 
-export function PlatformTabs({ value, onChange, lockedTo }: PlatformTabsProps) {
+export function PlatformTabs({
+  value,
+  onChange,
+  lockedTo,
+  availableProviders = ['meta', 'google'],
+}: PlatformTabsProps) {
+  const showMeta = availableProviders.includes('meta');
+  const showGoogle = availableProviders.includes('google');
+  const providerCount = availableProviders.length;
+
+  if (providerCount === 0) return null;
+
+  const options = baseOptions.filter((opt) => {
+    if (opt.key === 'meta') return showMeta;
+    if (opt.key === 'google') return showGoogle;
+    // "Todas" só faz sentido quando há mais de um provider disponível
+    return providerCount > 1;
+  });
+
   return (
     <div
       role="tablist"

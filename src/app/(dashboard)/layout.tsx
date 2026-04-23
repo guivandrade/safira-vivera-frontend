@@ -11,6 +11,7 @@ import { FilterUrlSync } from '@/components/layout/FilterUrlSync';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { ImpersonationBanner } from '@/components/layout/ImpersonationBanner';
+import { NoIntegrationsBanner } from '@/components/layout/NoIntegrationsBanner';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -32,6 +33,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <ImpersonationBanner />
+        <NoIntegrationsBanner />
         <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
 
         {/* Filter strip dedicado — FilterBar scrolla se precisar; SavedViewsMenu fica ancorado na direita */}
