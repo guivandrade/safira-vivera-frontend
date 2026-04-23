@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 
 interface EmptyStateCTAProps {
@@ -58,11 +59,25 @@ export function EmptyStateCTA({ variant, onConnectGoogle, isConnecting }: EmptyS
   }
 
   return (
-    <div className="rounded-lg border border-line bg-surface p-10 text-center">
-      <h3 className="text-sm font-semibold text-ink">Nenhum dado disponível</h3>
-      <p className="mt-1 text-xs text-ink-muted">
-        Conecte uma plataforma ou verifique se há campanhas ativas no período selecionado.
+    <div className="rounded-lg border border-dashed border-line bg-surface-muted p-10 text-center">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-subtle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-6 w-6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 3v18h18" />
+          <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+        </svg>
+      </div>
+      <h3 className="text-sm font-semibold text-ink">Sem dados no período selecionado</h3>
+      <p className="mx-auto mt-1 max-w-sm text-xs text-ink-muted">
+        Tente aumentar o período (ex: últimos 30 dias) ou verifique se há campanhas ativas nas
+        plataformas conectadas.
       </p>
+      <div className="mt-4 flex justify-center gap-2">
+        <Link href="/integracoes">
+          <Button size="sm" variant="secondary">
+            Ver integrações
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

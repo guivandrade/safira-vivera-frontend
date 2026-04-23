@@ -31,3 +31,45 @@ export function classifyError(err: unknown): ErrorKind {
   }
   return 'unknown';
 }
+
+/**
+ * Mensagem amigável pronta pra mostrar na tela. Nunca deixa o usuário ver
+ * "Request failed with status code 401" ou stack trace.
+ *
+ * Ordem de preferência:
+ * 1. Mensagem vinda do backend (err.response.data.message) — já em PT, útil
+ * 2. Classificação da rede (sem response, 5xx, etc) — mensagem mapeada
+ * 3. Fallback contextualizado passado pelo caller
+ */
+export function getUserFacingMessage(err: unknown, fallback: string): string {
+  const backendMessage = axios.isAxiosError(err)
+    ? (err.response?.data as { message?: string } | undefined)?.message
+    : undefined;
+
+  // Se o backend mandou mensagem e ela não é ruído técnico, usamos
+  if (backendMessage && !isTechnicalNoise(backendMessage)) {
+    return backendMessage;
+  }
+
+  switch (classifyError(err)) {
+    case 'network':
+      return 'Sem conexão com o servidor. Verifique sua internet.';
+    case 'unauthorized':
+      return 'Sua sessão expirou. Faça login novamente.';
+    case 'server':
+      return 'O sistema está temporariamente indisponível. Tente em alguns minutos.';
+    case 'client':
+      return backendMessage ?? fallback;
+    default:
+      return fallback;
+  }
+}
+
+/**
+ * Mensagens que vazam detalhe técnico e não devem aparecer na UI.
+ * Se o backend devolver algo assim, preferimos a classificação por status.
+ */
+function isTechnicalNoise(msg: string): boolean {
+  const noisy = [/Request failed/i, /timeout/i, /axios/i, /socket/i, /ECONN/i];
+  return noisy.some((re) => re.test(msg));
+}

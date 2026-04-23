@@ -13,6 +13,7 @@ import {
   KpiCardsSkeleton,
   TableSkeleton,
 } from '@/components/features/campaigns/CampaignsSkeleton';
+import { getUserFacingMessage } from '@/lib/errors';
 import { useCreatives } from '@/hooks/use-creatives';
 import type { CreativeRow } from '@/types/api';
 import { formatCurrency, formatNumber, formatPercent, safeDiv } from '@/lib/formatters';
@@ -224,7 +225,7 @@ export function CreativesPage() {
 
       {error && (
         <div className="rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
-          {error instanceof Error ? error.message : 'Erro ao carregar criativos'}
+          {getUserFacingMessage(error, 'Não conseguimos carregar os criativos.')}
         </div>
       )}
 

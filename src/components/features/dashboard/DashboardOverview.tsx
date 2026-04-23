@@ -18,6 +18,7 @@ import { InsightsFeed } from './InsightsFeed';
 import { ShortcutCard } from './ShortcutCard';
 import { LayoutSwitcher } from './LayoutSwitcher';
 import { FreshnessIndicator } from '@/components/ui/FreshnessIndicator';
+import { getUserFacingMessage } from '@/lib/errors';
 
 export function DashboardOverview() {
   const router = useRouter();
@@ -163,7 +164,7 @@ export function DashboardOverview() {
 
       {error && (
         <div className="rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
-          {error instanceof Error ? error.message : 'Erro ao carregar dados'}
+          {getUserFacingMessage(error, 'Não conseguimos carregar seus dados agora.')}
         </div>
       )}
 
