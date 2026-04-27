@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, FormEvent, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { classifyError, getErrorMessage } from '@/lib/errors';
@@ -17,6 +20,13 @@ interface LoginResponse {
     name: string;
   };
 }
+
+const loginSchema = z.object({
+  email: z.string().min(1, 'Informe seu email').email('Email inválido'),
+  password: z.string().min(1, 'Informe sua senha'),
+});
+
+type LoginInput = z.infer<typeof loginSchema>;
 
 /**
  * Aceita só paths internos relativos. Rejeita URLs absolutas,
@@ -44,22 +54,26 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const returnUrl = sanitizeReturnUrl(searchParams.get('returnUrl'));
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onSubmit',
+  });
 
+  const email = watch('email');
+  const password = watch('password');
+
+  const onSubmit = async (values: LoginInput) => {
+    setSubmitError(null);
     try {
-      const response = await apiClient.post<LoginResponse>('/auth/login', {
-        email,
-        password,
-      });
+      const response = await apiClient.post<LoginResponse>('/auth/login', values);
 
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.data.access_token);
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.data.refresh_token);
@@ -95,9 +109,7 @@ function LoginForm() {
       } else {
         message = 'Erro ao fazer login.';
       }
-      setError(message);
-    } finally {
-      setIsLoading(false);
+      setSubmitError(message);
     }
   };
 
@@ -115,7 +127,8 @@ function LoginForm() {
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
           className="space-y-6 rounded-lg border border-line bg-surface p-8 shadow-card"
         >
           <div>
@@ -125,14 +138,19 @@ function LoginForm() {
             <input
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
               autoComplete="email"
-              disabled={isLoading}
-              className="w-full rounded-lg border border-line bg-surface px-4 py-3 text-ink outline-none transition focus:border-transparent focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:bg-surface-subtle"
+              disabled={isSubmitting}
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'email-error' : undefined}
+              {...register('email')}
+              className="w-full rounded-lg border border-line bg-surface px-4 py-3 text-ink outline-none transition focus:border-transparent focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:bg-surface-subtle aria-[invalid=true]:border-danger"
               placeholder="voce@exemplo.com"
             />
+            {errors.email && (
+              <p id="email-error" className="mt-1 text-xs text-danger">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           <div>
@@ -143,18 +161,18 @@ function LoginForm() {
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
                 autoComplete="current-password"
-                disabled={isLoading}
-                className="w-full rounded-lg border border-line bg-surface px-4 py-3 pr-12 text-ink outline-none transition focus:border-transparent focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:bg-surface-subtle"
+                disabled={isSubmitting}
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                {...register('password')}
+                className="w-full rounded-lg border border-line bg-surface px-4 py-3 pr-12 text-ink outline-none transition focus:border-transparent focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:bg-surface-subtle aria-[invalid=true]:border-danger"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                disabled={isLoading}
+                disabled={isSubmitting}
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 aria-pressed={showPassword}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-ink-muted transition hover:text-ink"
@@ -197,14 +215,19 @@ function LoginForm() {
                 )}
               </button>
             </div>
+            {errors.password && (
+              <p id="password-error" className="mt-1 text-xs text-danger">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
-          {error && (
+          {submitError && (
             <div
               role="alert"
               className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
             >
-              {error}
+              {submitError}
             </div>
           )}
 
@@ -212,11 +235,11 @@ function LoginForm() {
             <button
               type="button"
               onClick={() =>
-                setError(
+                setSubmitError(
                   'Recuperação de senha ainda não está disponível. Fale com o time Safira pra redefinir.',
                 )
               }
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="text-xs text-ink-muted hover:text-accent"
             >
               Esqueceu a senha?
@@ -225,16 +248,16 @@ function LoginForm() {
 
           <button
             type="submit"
-            disabled={isLoading || !email || !password}
+            disabled={isSubmitting || !email || !password}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent py-3 font-semibold text-accent-fg transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLoading && (
+            {isSubmitting && (
               <span
                 className="h-4 w-4 animate-spin rounded-full border-2 border-accent-fg/30 border-t-accent-fg"
                 aria-hidden
               />
             )}
-            {isLoading ? 'Entrando...' : 'Entrar'}
+            {isSubmitting ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 

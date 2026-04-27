@@ -1,4 +1,15 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Vívera — Dashboard de Campanhas',
+  description: 'Análise integrada de Meta Ads e Google Ads em uma só plataforma.',
+  openGraph: {
+    title: 'Vívera — Dashboard de Campanhas',
+    description: 'Análise integrada de Meta Ads e Google Ads em uma só plataforma.',
+    type: 'website',
+  },
+};
 
 export default function Home() {
   return (

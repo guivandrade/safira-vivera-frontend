@@ -1,6 +1,9 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useClinic, useUpdateClinic } from '@/hooks/use-clinic';
@@ -8,15 +11,21 @@ import { useToast } from '@/providers/toast-provider';
 import { getErrorMessage } from '@/lib/errors';
 import { isClinicConfigured } from '@/types/api';
 
-interface FormState {
-  name: string;
-  address: string;
-  city: string;
-  state: string;
-  radiusKm: number;
-}
+const clinicSchema = z.object({
+  name: z.string().min(1, 'Informe o nome da clínica'),
+  address: z.string().min(1, 'Informe o endereço'),
+  city: z.string().min(1, 'Informe a cidade'),
+  state: z
+    .string()
+    .min(2, 'UF precisa ter 2 letras')
+    .max(2, 'UF precisa ter 2 letras')
+    .regex(/^[A-Za-z]{2}$/, 'Use só letras na UF'),
+  radiusKm: z.number().min(1).max(20),
+});
 
-const DEFAULT: FormState = {
+type ClinicFormInput = z.infer<typeof clinicSchema>;
+
+const DEFAULT: ClinicFormInput = {
   name: '',
   address: '',
   city: '',
@@ -28,40 +37,38 @@ export function ClinicSettingsPage() {
   const { data, isLoading } = useClinic();
   const updateMutation = useUpdateClinic();
   const toast = useToast();
-  const [form, setForm] = useState<FormState>(DEFAULT);
-  const [dirty, setDirty] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors, isSubmitting, isDirty },
+  } = useForm<ClinicFormInput>({
+    resolver: zodResolver(clinicSchema),
+    defaultValues: DEFAULT,
+  });
 
   useEffect(() => {
     if (isClinicConfigured(data)) {
-      setForm({
+      reset({
         name: data.name,
         address: data.address,
         city: data.city,
         state: data.state,
         radiusKm: data.radiusKm,
       });
-      setDirty(false);
     }
-  }, [data]);
+  }, [data, reset]);
 
-  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setDirty(true);
-  };
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.address || !form.city || !form.state) return;
+  const onSubmit = async (values: ClinicFormInput) => {
     try {
       await updateMutation.mutateAsync({
-        name: form.name,
-        address: form.address,
-        city: form.city,
-        state: form.state.toUpperCase(),
-        radiusKm: form.radiusKm,
+        ...values,
+        state: values.state.toUpperCase(),
       });
       toast.success('Configurações da clínica salvas');
-      setDirty(false);
+      reset({ ...values, state: values.state.toUpperCase() });
     } catch (err: unknown) {
       toast.error(
         getErrorMessage(err, 'Erro ao salvar — verifique o endereço e tente novamente'),
@@ -81,7 +88,7 @@ export function ClinicSettingsPage() {
         </p>
       </div>
 
-      <form onSubmit={submit}>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Card padding="lg">
           <CardHeader
             title="Endereço"
@@ -95,83 +102,93 @@ export function ClinicSettingsPage() {
           />
 
           <div className="grid gap-4">
-            <Field label="Nome da clínica" required>
+            <Field id="name" label="Nome da clínica" required error={errors.name?.message}>
               <input
+                id="name"
                 type="text"
-                value={form.name}
-                onChange={(e) => update('name', e.target.value)}
+                {...register('name')}
+                aria-invalid={!!errors.name}
                 placeholder="Ex: Clínica Vivera"
-                className="w-full rounded-md border border-line bg-surface-muted px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-accent/40"
-                required
+                className={inputClass}
               />
             </Field>
 
-            <Field label="Endereço completo" required>
+            <Field id="address" label="Endereço completo" required error={errors.address?.message}>
               <input
+                id="address"
                 type="text"
-                value={form.address}
-                onChange={(e) => update('address', e.target.value)}
+                {...register('address')}
+                aria-invalid={!!errors.address}
                 placeholder="Ex: Rua dos Pinheiros, 500"
-                className="w-full rounded-md border border-line bg-surface-muted px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-accent/40"
-                required
+                className={inputClass}
               />
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_100px]">
-              <Field label="Cidade" required>
+              <Field id="city" label="Cidade" required error={errors.city?.message}>
                 <input
+                  id="city"
                   type="text"
-                  value={form.city}
-                  onChange={(e) => update('city', e.target.value)}
+                  {...register('city')}
+                  aria-invalid={!!errors.city}
                   placeholder="São Paulo"
-                  className="w-full rounded-md border border-line bg-surface-muted px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-accent/40"
-                  required
+                  className={inputClass}
                 />
               </Field>
 
-              <Field label="UF" required>
+              <Field id="state" label="UF" required error={errors.state?.message}>
                 <input
+                  id="state"
                   type="text"
-                  value={form.state}
-                  onChange={(e) => update('state', e.target.value.toUpperCase())}
+                  {...register('state', {
+                    setValueAs: (v: string) => (v ?? '').toUpperCase(),
+                  })}
+                  aria-invalid={!!errors.state}
                   maxLength={2}
                   placeholder="SP"
-                  className="w-full rounded-md border border-line bg-surface-muted px-3 py-2 text-sm uppercase text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-accent/40"
-                  required
+                  className={`${inputClass} uppercase`}
                 />
               </Field>
             </div>
 
             <Field
+              id="radiusKm"
               label="Raio de análise (km)"
               hint="Campanhas e bairros fora desse raio não entram na página Geografia"
             >
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={1}
-                  max={20}
-                  step={0.5}
-                  value={form.radiusKm}
-                  onChange={(e) => update('radiusKm', Number(e.target.value))}
-                  className="flex-1 accent-accent"
-                />
-                <span className="min-w-[60px] text-right text-sm font-semibold tabular-nums text-ink">
-                  {form.radiusKm} km
-                </span>
-              </div>
+              <Controller
+                name="radiusKm"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="radiusKm"
+                      type="range"
+                      min={1}
+                      max={20}
+                      step={0.5}
+                      value={field.value}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      className="flex-1 accent-accent"
+                    />
+                    <span className="min-w-[60px] text-right text-sm font-semibold tabular-nums text-ink">
+                      {field.value} km
+                    </span>
+                  </div>
+                )}
+              />
             </Field>
           </div>
         </Card>
 
         <div className="mt-4 flex items-center justify-end gap-2">
-          {dirty && <span className="text-xs text-ink-muted">Alterações não salvas</span>}
+          {isDirty && <span className="text-xs text-ink-muted">Alterações não salvas</span>}
           <Button
             type="submit"
             variant="primary"
-            disabled={updateMutation.isPending || !dirty || !form.name || !form.address}
+            disabled={isSubmitting || !isDirty}
           >
-            {updateMutation.isPending ? 'Salvando...' : 'Salvar'}
+            {isSubmitting ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </form>
@@ -179,25 +196,36 @@ export function ClinicSettingsPage() {
   );
 }
 
+const inputClass =
+  'w-full rounded-md border border-line bg-surface-muted px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 aria-[invalid=true]:border-danger';
+
 function Field({
+  id,
   label,
   hint,
   required,
+  error,
   children,
 }: {
+  id: string;
   label: string;
   hint?: string;
   required?: boolean;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="text-xs font-medium text-ink-muted">
+    <div className="block">
+      <label htmlFor={id} className="text-xs font-medium text-ink-muted">
         {label}
         {required && <span className="ml-0.5 text-danger">*</span>}
-      </span>
+      </label>
       <div className="mt-1">{children}</div>
-      {hint && <span className="mt-1 block text-[11px] text-ink-subtle">{hint}</span>}
-    </label>
+      {error ? (
+        <span className="mt-1 block text-[11px] text-danger">{error}</span>
+      ) : hint ? (
+        <span className="mt-1 block text-[11px] text-ink-subtle">{hint}</span>
+      ) : null}
+    </div>
   );
 }

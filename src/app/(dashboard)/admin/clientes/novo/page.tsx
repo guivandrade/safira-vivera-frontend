@@ -3,24 +3,32 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useCreateAccount } from '@/hooks/use-admin-accounts';
 import { useToast } from '@/providers/toast-provider';
 import { getErrorMessage } from '@/lib/errors';
-import type { CreateAccountInput } from '@/types/admin';
-import type { NicheType } from '@/types/auth-me';
 
-const initialState: CreateAccountInput = {
-  name: '',
-  slug: '',
-  nicheType: 'LOCAL_BUSINESS',
-  ownerEmail: '',
-  ownerName: '',
-  ownerPassword: '',
-  hasMeta: false,
-  hasGoogle: false,
-};
+const SLUG_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+const newAccountSchema = z.object({
+  name: z.string().min(1, 'Informe o nome do cliente'),
+  slug: z
+    .string()
+    .min(1, 'Informe o identificador')
+    .regex(SLUG_REGEX, 'Use só letras minúsculas, números e hífens'),
+  nicheType: z.enum(['LOCAL_BUSINESS', 'INFOPRODUCT', 'ECOMMERCE']),
+  ownerName: z.string().min(1, 'Informe o nome do responsável'),
+  ownerEmail: z.string().min(1, 'Informe o email').email('Email inválido'),
+  ownerPassword: z.string().min(8, 'A senha precisa ter pelo menos 8 caracteres'),
+  hasMeta: z.boolean(),
+  hasGoogle: z.boolean(),
+});
+
+type NewAccountInput = z.infer<typeof newAccountSchema>;
 
 /**
  * Converte nome → slug kebab-case básico. Não é perfeito (não remove acentos
@@ -38,31 +46,46 @@ function toSlug(name: string): string {
 }
 
 export default function NovoClientePage() {
-  const [form, setForm] = useState<CreateAccountInput>(initialState);
-  const [slugEdited, setSlugEdited] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [slugEdited, setSlugEdited] = useState(false);
   const router = useRouter();
   const createAccount = useCreateAccount();
   const toast = useToast();
 
-  const slugValid = form.slug === '' || /^[a-z0-9]+(-[a-z0-9]+)*$/.test(form.slug);
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    control,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<NewAccountInput>({
+    resolver: zodResolver(newAccountSchema),
+    defaultValues: {
+      name: '',
+      slug: '',
+      nicheType: 'LOCAL_BUSINESS',
+      ownerEmail: '',
+      ownerName: '',
+      ownerPassword: '',
+      hasMeta: false,
+      hasGoogle: false,
+    },
+  });
 
-  const setField = <K extends keyof CreateAccountInput>(key: K, value: CreateAccountInput[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
+  const hasMeta = watch('hasMeta');
 
   const handleNameChange = (value: string) => {
-    setField('name', value);
+    setValue('name', value, { shouldValidate: false });
     if (!slugEdited) {
-      setField('slug', toSlug(value));
+      setValue('slug', toSlug(value), { shouldValidate: false });
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: NewAccountInput) => {
     try {
-      await createAccount.mutateAsync(form);
-      toast.success(`${form.name} foi cadastrado. Email: ${form.ownerEmail}`, {
+      await createAccount.mutateAsync(values);
+      toast.success(`${values.name} foi cadastrado. Email: ${values.ownerEmail}`, {
         title: 'Cliente criado',
       });
       router.push('/admin/clientes');
@@ -86,47 +109,43 @@ export default function NovoClientePage() {
         </p>
       </header>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
         <Card>
           <CardHeader title="Dados do cliente" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nome da empresa" required>
+            <Field id="name" label="Nome da empresa" required error={errors.name?.message}>
               <input
+                id="name"
                 type="text"
-                required
-                value={form.name}
-                onChange={(e) => handleNameChange(e.target.value)}
+                {...register('name', { onChange: (e) => handleNameChange(e.target.value) })}
+                aria-invalid={!!errors.name}
                 className={inputClass}
                 placeholder="Clínica Vívera"
               />
             </Field>
             <Field
+              id="slug"
               label="Identificador (URL)"
               required
               hint="Aparece em URLs e links. Use letras minúsculas, números e hífens. Não pode ser alterado depois."
-              error={!slugValid ? 'Use só letras minúsculas, números e hífens' : undefined}
+              error={errors.slug?.message}
             >
               <input
+                id="slug"
                 type="text"
-                required
-                value={form.slug}
-                onChange={(e) => {
-                  setSlugEdited(true);
-                  setField('slug', e.target.value.toLowerCase());
-                }}
-                pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                {...register('slug', {
+                  onChange: (e) => {
+                    setSlugEdited(true);
+                    setValue('slug', e.target.value.toLowerCase(), { shouldValidate: true });
+                  },
+                })}
+                aria-invalid={!!errors.slug}
                 className={inputClass}
                 placeholder="clinica-vivera"
-                aria-invalid={!slugValid}
               />
             </Field>
-            <Field label="Tipo de negócio" required>
-              <select
-                required
-                value={form.nicheType}
-                onChange={(e) => setField('nicheType', e.target.value as NicheType)}
-                className={inputClass}
-              >
+            <Field id="nicheType" label="Tipo de negócio" required>
+              <select id="nicheType" {...register('nicheType')} className={inputClass}>
                 <option value="LOCAL_BUSINESS">Negócio local</option>
                 <option value="INFOPRODUCT">Infoproduto</option>
                 <option value="ECOMMERCE">E-commerce</option>
@@ -135,24 +154,36 @@ export default function NovoClientePage() {
             <div className="sm:col-span-2">
               <p className="mb-2 text-sm font-medium text-ink">Integrações disponíveis</p>
               <div className="flex flex-wrap items-center gap-4 text-sm">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.hasGoogle ?? false}
-                    onChange={(e) => setField('hasGoogle', e.target.checked)}
-                  />
-                  Google Ads
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.hasMeta ?? false}
-                    onChange={(e) => setField('hasMeta', e.target.checked)}
-                  />
-                  Meta Ads
-                </label>
+                <Controller
+                  name="hasGoogle"
+                  control={control}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                      Google Ads
+                    </label>
+                  )}
+                />
+                <Controller
+                  name="hasMeta"
+                  control={control}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                      Meta Ads
+                    </label>
+                  )}
+                />
               </div>
-              {form.hasMeta && (
+              {hasMeta && (
                 <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
                   <strong>Atenção:</strong> Meta Ads ainda usa credencial global. Ao marcar,
                   este cliente vê os dados da conta de anúncios configurada no ambiente —
@@ -169,38 +200,39 @@ export default function NovoClientePage() {
             description="Quem vai acessar o dashboard do cliente."
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nome completo" required>
+            <Field id="ownerName" label="Nome completo" required error={errors.ownerName?.message}>
               <input
+                id="ownerName"
                 type="text"
-                required
-                value={form.ownerName}
-                onChange={(e) => setField('ownerName', e.target.value)}
+                {...register('ownerName')}
+                aria-invalid={!!errors.ownerName}
                 className={inputClass}
                 placeholder="Vera Silva"
               />
             </Field>
-            <Field label="Email" required>
+            <Field id="ownerEmail" label="Email" required error={errors.ownerEmail?.message}>
               <input
+                id="ownerEmail"
                 type="email"
-                required
-                value={form.ownerEmail}
-                onChange={(e) => setField('ownerEmail', e.target.value)}
+                {...register('ownerEmail')}
+                aria-invalid={!!errors.ownerEmail}
                 className={inputClass}
                 placeholder="vera@clinica.com.br"
               />
             </Field>
             <Field
+              id="ownerPassword"
               label="Senha inicial"
               required
               hint="Mínimo 8 caracteres. O responsável pode trocar depois no primeiro acesso."
+              error={errors.ownerPassword?.message}
             >
               <div className="relative">
                 <input
+                  id="ownerPassword"
                   type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={8}
-                  value={form.ownerPassword}
-                  onChange={(e) => setField('ownerPassword', e.target.value)}
+                  {...register('ownerPassword')}
+                  aria-invalid={!!errors.ownerPassword}
                   className={`${inputClass} pr-10`}
                   placeholder="••••••••"
                   autoComplete="new-password"
@@ -234,12 +266,8 @@ export default function NovoClientePage() {
               Cancelar
             </Button>
           </Link>
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={createAccount.isPending || !slugValid}
-          >
-            {createAccount.isPending ? 'Criando...' : 'Criar cliente'}
+          <Button variant="primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Criando...' : 'Criar cliente'}
           </Button>
         </div>
       </form>
@@ -248,15 +276,17 @@ export default function NovoClientePage() {
 }
 
 const inputClass =
-  'w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30';
+  'w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 aria-[invalid=true]:border-danger';
 
 function Field({
+  id,
   label,
   required,
   hint,
   error,
   children,
 }: {
+  id: string;
   label: string;
   required?: boolean;
   hint?: string;
@@ -264,17 +294,17 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-ink">
+    <div className="flex flex-col gap-1 text-sm">
+      <label htmlFor={id} className="font-medium text-ink">
         {label}
         {required && <span className="ml-0.5 text-danger">*</span>}
-      </span>
+      </label>
       {children}
       {error ? (
         <span className="text-xs text-danger">{error}</span>
       ) : hint ? (
         <span className="text-xs text-ink-subtle">{hint}</span>
       ) : null}
-    </label>
+    </div>
   );
 }
