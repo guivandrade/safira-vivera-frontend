@@ -15,6 +15,8 @@ import {
 } from '@/hooks/use-admin-accounts';
 import { useToast } from '@/providers/toast-provider';
 import { STATUS_LABELS } from '@/lib/admin-labels';
+import { getErrorMessage } from '@/lib/errors';
+import axios from 'axios';
 import type { AccountStatus, NicheType } from '@/types/auth-me';
 
 export default function ClienteDetalhePage() {
@@ -69,8 +71,8 @@ export default function ClienteDetalhePage() {
     try {
       await update.mutateAsync(patch);
       toast.success('Alterações salvas');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? err?.message ?? 'Erro desconhecido', {
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro desconhecido'), {
         title: 'Não foi possível salvar',
       });
     }
@@ -89,8 +91,8 @@ export default function ClienteDetalhePage() {
       );
       setNewPwd('');
       setShowNewPwd(false);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? err?.message ?? 'Erro desconhecido', {
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro desconhecido'), {
         title: 'Não foi possível trocar a senha',
       });
     }
@@ -101,8 +103,8 @@ export default function ClienteDetalhePage() {
       await archive.mutateAsync(id);
       toast.success('Cliente arquivado');
       router.push('/admin/clientes');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? err?.message ?? 'Erro desconhecido', {
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro desconhecido'), {
         title: 'Não foi possível arquivar',
       });
     }
@@ -113,12 +115,11 @@ export default function ClienteDetalhePage() {
       await impersonate.mutateAsync(id);
       toast.success(`Visualizando como ${data.name}`);
       router.push('/dashboard');
-    } catch (err: any) {
-      const status = err?.response?.status;
-      const msg =
-        status === 403
-          ? 'Sem permissão para visualizar este cliente'
-          : err?.response?.data?.message ?? err?.message ?? 'Erro desconhecido';
+    } catch (err: unknown) {
+      const isForbidden = axios.isAxiosError(err) && err.response?.status === 403;
+      const msg = isForbidden
+        ? 'Sem permissão para visualizar este cliente'
+        : getErrorMessage(err, 'Erro desconhecido');
       toast.error(msg, { title: 'Falha ao visualizar' });
     }
   };

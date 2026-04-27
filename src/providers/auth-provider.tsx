@@ -49,6 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const can = useCallback(
     (permission: Permission): boolean => {
+      // Staff Safira passa em qualquer permissão — é a contraparte do bypass
+      // que o backend já aplica no AccountScopedGuard. Sem isso, sidebar e
+      // KPIs com `<Can>` somem pra staff impersonando.
+      if (data?.user?.isSafiraStaff) return true;
       const perms = data?.currentAccount?.permissions;
       if (!perms) return false;
       return perms[permission] === true;
