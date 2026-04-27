@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, Suspense, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar, SidebarContent } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { MobileSidebar } from '@/components/layout/MobileSidebar';
@@ -15,6 +16,10 @@ import { NoIntegrationsBanner } from '@/components/layout/NoIntegrationsBanner';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  // Rotas /admin/* são da agência (staff Safira sem cliente selecionado).
+  // Não fazem sentido ter sidebar de páginas do cliente nem filtros de período.
+  const isAgencyView = pathname?.startsWith('/admin') ?? false;
 
   return (
     <AuthGuard>
@@ -22,29 +27,38 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <a href="#main-content" className="skip-to-content">
         Pular para o conteúdo
       </a>
-      <Suspense fallback={null}>
-        <FilterUrlSync />
-      </Suspense>
-      <CommandPalette />
-      <Sidebar />
-      <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)}>
-        <SidebarContent onNavigate={() => setMobileOpen(false)} />
-      </MobileSidebar>
+      {!isAgencyView && (
+        <>
+          <Suspense fallback={null}>
+            <FilterUrlSync />
+          </Suspense>
+          <CommandPalette />
+          <Sidebar />
+          <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)}>
+            <SidebarContent onNavigate={() => setMobileOpen(false)} />
+          </MobileSidebar>
+        </>
+      )}
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <ImpersonationBanner />
         <NoIntegrationsBanner />
-        <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
+        <TopBar
+          onOpenMobileNav={() => setMobileOpen(true)}
+          showMobileNav={!isAgencyView}
+        />
 
-        {/* Filter strip dedicado — FilterBar scrolla se precisar; SavedViewsMenu fica ancorado na direita */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-4 py-2 md:px-6">
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <FilterBar />
+        {!isAgencyView && (
+          /* Filter strip dedicado — FilterBar scrolla se precisar; SavedViewsMenu fica ancorado na direita */
+          <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-4 py-2 md:px-6">
+            <div className="min-w-0 flex-1 overflow-x-auto">
+              <FilterBar />
+            </div>
+            <div className="shrink-0">
+              <SavedViewsMenu />
+            </div>
           </div>
-          <div className="shrink-0">
-            <SavedViewsMenu />
-          </div>
-        </div>
+        )}
 
         <main
           id="main-content"
