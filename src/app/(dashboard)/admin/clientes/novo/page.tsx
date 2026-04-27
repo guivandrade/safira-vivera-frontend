@@ -7,6 +7,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useCreateAccount } from '@/hooks/use-admin-accounts';
 import { useToast } from '@/providers/toast-provider';
+import { getErrorMessage } from '@/lib/errors';
 import type { CreateAccountInput } from '@/types/admin';
 import type { NicheType } from '@/types/auth-me';
 
@@ -65,9 +66,8 @@ export default function NovoClientePage() {
         title: 'Cliente criado',
       });
       router.push('/admin/clientes');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? 'Erro desconhecido';
-      toast.error(String(msg), { title: 'Falha ao criar' });
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro desconhecido'), { title: 'Falha ao criar' });
     }
   };
 

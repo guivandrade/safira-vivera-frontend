@@ -8,6 +8,8 @@ import { EmptyStatePlaceholder } from '@/components/ui/EmptyStatePlaceholder';
 import { useAdminAccounts, useImpersonateAccount } from '@/hooks/use-admin-accounts';
 import { useToast } from '@/providers/toast-provider';
 import { NICHE_LABELS, STATUS_LABELS, STATUS_BADGE_STYLES } from '@/lib/admin-labels';
+import { getErrorMessage } from '@/lib/errors';
+import axios from 'axios';
 import type { AdminAccount } from '@/types/admin';
 
 export default function AdminClientesPage() {
@@ -27,12 +29,11 @@ export default function AdminClientesPage() {
       await impersonate.mutateAsync(account.id);
       toast.success(`Visualizando como ${account.name}`);
       router.push('/dashboard');
-    } catch (err: any) {
-      const status = err?.response?.status;
-      const msg =
-        status === 403
-          ? 'Sem permissão para visualizar este cliente'
-          : err?.response?.data?.message ?? err?.message ?? 'Erro desconhecido';
+    } catch (err: unknown) {
+      const isForbidden = axios.isAxiosError(err) && err.response?.status === 403;
+      const msg = isForbidden
+        ? 'Sem permissão para visualizar este cliente'
+        : getErrorMessage(err, 'Erro desconhecido');
       toast.error(msg, { title: 'Falha ao visualizar' });
     }
   };
