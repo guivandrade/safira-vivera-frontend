@@ -61,6 +61,7 @@ function LoginForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setValue,
     watch,
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -69,6 +70,17 @@ function LoginForm() {
 
   const email = watch('email');
   const password = watch('password');
+
+  const devLoginEmail = process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL;
+  const devLoginPassword = process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD;
+  const showDevAutofill =
+    process.env.NODE_ENV === 'development' && !!devLoginEmail && !!devLoginPassword;
+
+  const handleDevAutofill = () => {
+    if (!devLoginEmail || !devLoginPassword) return;
+    setValue('email', devLoginEmail, { shouldValidate: true, shouldDirty: true });
+    setValue('password', devLoginPassword, { shouldValidate: true, shouldDirty: true });
+  };
 
   const onSubmit = async (values: LoginInput) => {
     setSubmitError(null);
@@ -125,6 +137,18 @@ function LoginForm() {
           </Link>
           <p className="mt-2 text-sm text-ink-muted">Acesse sua conta</p>
         </div>
+
+        {showDevAutofill && (
+          <button
+            type="button"
+            onClick={handleDevAutofill}
+            disabled={isSubmitting}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-accent/40 bg-accent/5 px-4 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+            data-testid="dev-autofill-button"
+          >
+            Preencher credenciais de dev
+          </button>
+        )}
 
         <form
           onSubmit={handleSubmit(onSubmit)}
