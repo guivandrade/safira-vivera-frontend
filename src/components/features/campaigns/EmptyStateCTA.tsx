@@ -51,7 +51,7 @@ export function EmptyStateCTA({ variant, onConnectGoogle, isConnecting }: EmptyS
             Sem dados do Meta Ads no período
           </p>
           <p className="text-xs text-blue-800/80 dark:text-blue-300/80">
-            Verifique o token no backend ou se há campanhas ativas.
+            Pode ser período sem campanhas ativas ou token Meta vencido. Se persistir, fale com a Safira.
           </p>
         </div>
       </div>
