@@ -58,6 +58,7 @@ export function DetailedCampaignsTable({ data, onRowClick }: DetailedCampaignsTa
           <p className="truncate font-medium text-ink">
             {c.name}
             {c.objective === 'boost' && <BoostBadge />}
+            {c.hasIssues && <IssuesBadge />}
           </p>
           <p className="truncate font-mono text-[10px] text-ink-subtle">{c.id}</p>
         </div>
@@ -178,6 +179,17 @@ function BoostBadge() {
       title="Post turbinado via Meta Business Suite — sem conversão trackada"
     >
       Boost
+    </span>
+  );
+}
+
+function IssuesBadge() {
+  return (
+    <span
+      className="ml-2 inline-flex items-center rounded border border-danger/30 bg-danger/10 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wider text-danger"
+      title="Campanha com violações de policy ativas no Meta — verifique no Ads Manager"
+    >
+      Issues
     </span>
   );
 }

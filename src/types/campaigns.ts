@@ -45,6 +45,13 @@ export interface CampaignSummary {
   /** Taxa de conversão em fração (0..1). */
   conversionRate?: number | null;
   cpa?: number | null;
+  /**
+   * Meta-only: indica que a campanha tem violações de policy ativas (status
+   * real `WITH_ISSUES` no provider). Backend mantém `status: 'ACTIVE'` por
+   * compat e seta esse flag em paralelo. UI mostra badge "Issues" quando true.
+   * Ausente em backends que ainda não expuseram o campo.
+   */
+  hasIssues?: boolean;
 }
 
 export interface PreviousPeriodTotals {
