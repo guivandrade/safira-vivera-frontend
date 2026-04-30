@@ -159,3 +159,26 @@ export interface GoogleAdsStatus {
   customerId?: string;
   customerName?: string;
 }
+
+/**
+ * Status da integração Meta Ads. Espelha o shape do `/integrations/meta-ads/status`.
+ *
+ * Histórico do shape:
+ * - **Backend antigo** (token Meta global no env): retornava `{ connected: true,
+ *   tokenType: 'system' }` sempre. `tokenType` foi removido na auditoria
+ *   (PRs backend #48-#51) — TS aceita o campo extra como ruído ignorável.
+ * - **Backend novo** (credenciais por account): retorna `connected: false` quando
+ *   o account não tem credential provisionada. O endpoint pode também responder
+ *   401 nesse caso — `useMetaAdsStatus` normaliza pra `connected: false`.
+ *
+ * Provisão é exclusiva da Safira (POST `/integrations/meta-ads/admin/provision/:id`),
+ * por isso a UI de cliente não tem botão "Conectar" como no Google.
+ */
+export interface MetaAdsStatus {
+  connected: boolean;
+  /** ISO timestamp do TTL do long-lived token Meta (60 dias). null se ausente. */
+  expiresAt: string | null;
+  adAccountId?: string;
+  adAccountName?: string;
+  lastError?: string | null;
+}

@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/errors';
 import {
   useDisconnectGoogleAds,
   useGoogleAdsStatus,
+  useMetaAdsStatus,
 } from '@/hooks/use-integration-status';
 import { useToast } from '@/providers/toast-provider';
 import { Card } from '@/components/ui/Card';
@@ -29,6 +30,7 @@ function formatExpiry(expiresAt: string | null): string {
 
 export function ConnectionStatusCards() {
   const { data: googleStatus, isLoading, refetch } = useGoogleAdsStatus();
+  const { data: metaStatus, isLoading: metaLoading } = useMetaAdsStatus();
   const disconnectMutation = useDisconnectGoogleAds();
   const toast = useToast();
   const [connecting, setConnecting] = useState(false);
@@ -62,11 +64,14 @@ export function ConnectionStatusCards() {
   };
 
   const googleConnected = !!googleStatus?.connected;
+  const metaConnected = !!metaStatus?.connected;
 
   return (
     <section aria-label="Status das integrações" className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        {/* Meta */}
+        {/* Meta — provisão via admin Safira (sem botão "Conectar" como Google).
+            Empty state quando connected=false direciona o cliente a falar
+            com a Safira; staff faz o provision via /integrations/meta-ads/admin/provision. */}
         <Card padding="md">
           <div className="flex items-center gap-3">
             <span
@@ -75,11 +80,34 @@ export function ConnectionStatusCards() {
             >
               f
             </span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-ink">Meta Ads</p>
-              <p className="text-xs text-ink-muted">Token do sistema · sempre ativo</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-ink">
+                Meta Ads
+                {metaStatus?.adAccountName && (
+                  <span className="ml-1.5 font-normal text-ink-muted">
+                    · {metaStatus.adAccountName}
+                  </span>
+                )}
+              </p>
+              <p className="truncate text-xs text-ink-muted">
+                {metaLoading
+                  ? 'Verificando...'
+                  : metaConnected
+                    ? formatExpiry(metaStatus?.expiresAt ?? null)
+                    : 'Não conectado · fale com a Safira pra provisionar'}
+                {metaStatus?.adAccountId && (
+                  <span className="ml-2 font-mono text-[11px] text-ink-subtle">
+                    {metaStatus.adAccountId}
+                  </span>
+                )}
+              </p>
+              {metaStatus?.lastError && (
+                <p className="mt-0.5 truncate text-[11px] text-warning">
+                  ⚠ {metaStatus.lastError}
+                </p>
+              )}
             </div>
-            <StatusDot status="active" label="Configurado" />
+            <StatusDot status={metaConnected ? 'active' : 'paused'} />
           </div>
         </Card>
 
