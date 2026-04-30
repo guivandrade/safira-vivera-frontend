@@ -1,15 +1,11 @@
 name: CI
 
-# PAUSA TEMPORÁRIA DE CI (2026-04-23 → 2026-05-01)
-# Free tier de Actions estourou; triggers automáticos comentados até reset
-# do billing no dia 1/mês. workflow_dispatch permite rodar manual se precisar.
-# REVERTER após 2026-05-01: descomentar push/pull_request abaixo.
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   lint:
