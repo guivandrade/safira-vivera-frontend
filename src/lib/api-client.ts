@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { STORAGE_KEYS } from './storage-keys';
+import { clearAuthAndTenantStorageSync } from './clear-tenant-state';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -69,10 +70,7 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-        }
+        clearAuthAndTenantStorageSync();
         redirectToLogin();
         return Promise.reject(refreshError);
       }

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { clearTenantState } from '@/lib/clear-tenant-state';
 import type {
   AdminAccount,
   CreateAccountInput,
@@ -101,13 +102,17 @@ export function useImpersonateAccount() {
       return data;
     },
     onSuccess: (data) => {
+      // Ordem importa: limpa cache/stores ANTES de gravar os tokens novos.
+      // `clearTenantState` chama `queryClient.clear()` (remove caches do
+      // account anterior, ao contrário de `invalidateQueries` que só marca
+      // stale e mantém os dados visíveis até o refetch chegar).
+      clearTenantState(queryClient);
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
       localStorage.setItem(
         STORAGE_KEYS.IMPERSONATED_ACCOUNT,
         JSON.stringify(data.currentAccount),
       );
-      queryClient.invalidateQueries();
     },
   });
 }
