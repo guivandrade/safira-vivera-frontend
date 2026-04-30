@@ -13,6 +13,7 @@ import {
   useImpersonateAccount,
   useResetOwnerPassword,
   useUpdateAccount,
+  useUpdateOwner,
 } from '@/hooks/use-admin-accounts';
 import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/providers/toast-provider';
@@ -28,6 +29,7 @@ export default function ClienteDetalhePage() {
   const router = useRouter();
   const { data, isLoading, error } = useAdminAccount(id);
   const update = useUpdateAccount(id);
+  const updateOwner = useUpdateOwner(id);
   const archive = useArchiveAccount();
   const resetPwd = useResetOwnerPassword(id);
   const impersonate = useImpersonateAccount();
@@ -92,6 +94,17 @@ export default function ClienteDetalhePage() {
     try {
       await update.mutateAsync(patch);
       toast.success('Alterações salvas');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro desconhecido'), {
+        title: 'Não foi possível salvar',
+      });
+    }
+  };
+
+  const handleOwnerUpdate = async (patch: { name?: string; email?: string }) => {
+    try {
+      await updateOwner.mutateAsync(patch);
+      toast.success('Dados do responsável atualizados');
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Erro desconhecido'), {
         title: 'Não foi possível salvar',
@@ -257,17 +270,35 @@ export default function ClienteDetalhePage() {
       <Card>
         <CardHeader
           title="Responsável"
-          description="Pessoa que acessa o dashboard do cliente."
+          description="Pessoa que acessa o dashboard do cliente. Editar não notifica por email — comunique a alteração diretamente."
         />
-        <div className="space-y-1 text-sm">
-          <div>
-            <span className="text-ink-subtle">Nome: </span>
-            <span className="text-ink">{data.owner.name}</span>
-          </div>
-          <div>
-            <span className="text-ink-subtle">Email: </span>
-            <span className="text-ink">{data.owner.email}</span>
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nome do responsável">
+            <input
+              type="text"
+              defaultValue={data.owner.name}
+              onBlur={(e) =>
+                e.target.value !== data.owner.name &&
+                e.target.value.trim() !== '' &&
+                handleOwnerUpdate({ name: e.target.value })
+              }
+              className={inputClass}
+              disabled={updateOwner.isPending}
+            />
+          </Field>
+          <Field label="Email do responsável">
+            <input
+              type="email"
+              defaultValue={data.owner.email}
+              onBlur={(e) =>
+                e.target.value !== data.owner.email &&
+                e.target.value.trim() !== '' &&
+                handleOwnerUpdate({ email: e.target.value })
+              }
+              className={inputClass}
+              disabled={updateOwner.isPending}
+            />
+          </Field>
         </div>
 
         <div className="mt-5 border-t border-line pt-5">
