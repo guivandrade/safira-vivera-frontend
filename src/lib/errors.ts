@@ -17,13 +17,34 @@ export function getErrorMessage(err: unknown, fallback: string): string {
 
 /**
  * Classifica erro em categorias acionáveis. Usado para dar mensagem certa
- * ao usuário no login (rede caindo ≠ servidor quebrado ≠ credencial errada).
+ * ao usuário (rede caindo ≠ servidor quebrado ≠ credencial errada).
+ *
+ * `timeout` e `dns` são casos especiais de `network` (sem `err.response`)
+ * detectados pelo `error.code` do axios — diferenciam UI do usuário porque
+ * a ação corretiva é diferente:
+ * - timeout → tentar de novo (provavelmente vai funcionar)
+ * - dns → URL configurada errado (problema de setup, não de rede)
+ * - network genérico → conexão / firewall / CORS (browser não distingue)
  */
-export type ErrorKind = 'network' | 'unauthorized' | 'server' | 'client' | 'unknown';
+export type ErrorKind =
+  | 'timeout'
+  | 'dns'
+  | 'network'
+  | 'unauthorized'
+  | 'server'
+  | 'client'
+  | 'unknown';
 
 export function classifyError(err: unknown): ErrorKind {
   if (axios.isAxiosError(err)) {
-    if (!err.response) return 'network';
+    if (!err.response) {
+      // Sem response = falha antes de receber qualquer coisa do servidor.
+      // axios usa códigos do Node (lib http) E códigos próprios (`ERR_*`).
+      // Lista cobre os casos observados em browsers e Node SSR.
+      if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') return 'timeout';
+      if (err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN') return 'dns';
+      return 'network';
+    }
     const status = err.response.status;
     if (status === 401 || status === 403) return 'unauthorized';
     if (status >= 500) return 'server';
@@ -52,8 +73,12 @@ export function getUserFacingMessage(err: unknown, fallback: string): string {
   }
 
   switch (classifyError(err)) {
+    case 'timeout':
+      return 'A requisição demorou demais. Tente novamente em alguns instantes.';
+    case 'dns':
+      return 'Não conseguimos localizar o servidor. Verifique a configuração ou contate o suporte.';
     case 'network':
-      return 'Sem conexão com o servidor. Verifique sua internet.';
+      return 'Sem conexão com o servidor. Verifique sua internet ou tente novamente em instantes.';
     case 'unauthorized':
       return 'Sua sessão expirou. Faça login novamente.';
     case 'server':
@@ -63,6 +88,15 @@ export function getUserFacingMessage(err: unknown, fallback: string): string {
     default:
       return fallback;
   }
+}
+
+/**
+ * Extrai o `error.code` do axios, se existir. Útil pra logar contexto em
+ * Sentry sem vazar stack/message pra UI.
+ */
+export function getErrorCode(err: unknown): string | undefined {
+  if (axios.isAxiosError(err)) return err.code;
+  return undefined;
 }
 
 /**

@@ -8,7 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
-import { classifyError, getErrorMessage } from '@/lib/errors';
+import { classifyError, getErrorCode, getUserFacingMessage } from '@/lib/errors';
+import { captureException } from '@/lib/monitoring';
 import type { MeResponse } from '@/types/auth-me';
 
 interface LoginResponse {
@@ -108,19 +109,21 @@ function LoginForm() {
       router.push(returnUrl);
     } catch (err: unknown) {
       const kind = classifyError(err);
-      const backendMsg = getErrorMessage(err, '');
-      let message: string;
-      if (backendMsg) {
-        message = backendMsg;
-      } else if (kind === 'network') {
-        message = 'Não conseguimos contato com o servidor. Verifique sua conexão.';
-      } else if (kind === 'server') {
-        message = 'O sistema está temporariamente indisponível. Tente em alguns minutos.';
-      } else if (kind === 'unauthorized') {
-        message = 'Email ou senha incorretos.';
-      } else {
-        message = 'Erro ao fazer login.';
+      // 'unauthorized' no contexto de login = credencial errada (não sessão expirada).
+      // O `getUserFacingMessage` retorna "Sua sessão expirou..." que não cabe aqui.
+      const message =
+        kind === 'unauthorized'
+          ? 'Email ou senha incorretos.'
+          : getUserFacingMessage(err, 'Erro ao fazer login.');
+
+      // Falhas de rede no login são o caso mais difícil de debugar depois
+      // (CORS vs timeout vs DNS vs offline). Logamos `error.code` no Sentry
+      // pra triagem futura. 'unauthorized' não vai pra cá — credencial errada
+      // é evento esperado, não erro.
+      if (kind !== 'unauthorized') {
+        captureException(err, { feature: 'login', kind, code: getErrorCode(err) });
       }
+
       setSubmitError(message);
     }
   };
