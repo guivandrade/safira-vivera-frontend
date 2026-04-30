@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useCampaignInsights } from '@/hooks/use-campaign-insights';
 import { useGoogleAdsStatus } from '@/hooks/use-integration-status';
+import { useAuth } from '@/providers/auth-provider';
 import { useFiltersStore } from '@/stores/filters-store';
 import { useToast } from '@/providers/toast-provider';
 import { apiClient } from '@/lib/api-client';
@@ -30,6 +31,7 @@ export function CampaignsDashboard() {
   const includeInactive = useFiltersStore((s) => s.includeInactive);
   const setIncludeInactive = useFiltersStore((s) => s.setIncludeInactive);
   const { data: googleStatus } = useGoogleAdsStatus();
+  const { currentAccount } = useAuth();
   const searchParams = useSearchParams();
   const toast = useToast();
   const [isConnecting, setIsConnecting] = useState(false);
@@ -132,8 +134,14 @@ export function CampaignsDashboard() {
 
   const hasAnyData = !!data && data.monthlyData.length > 0;
   const googleConnected = !!googleStatus?.connected;
-  const showGoogleCta = !googleConnected || providerTotals.google === 0;
-  const showMetaEmpty = hasAnyData && providerTotals.meta === 0;
+  // Feature flags do account: se hasMeta=false, o cliente não opera Meta nesse
+  // tenant — não faz sentido mostrar empty CTA / connect-meta. Mesmo princípio
+  // pra Google. `?? true` cobre o caso de currentAccount ainda carregando ou
+  // backends antigos sem essas flags (default permissivo).
+  const accountHasMeta = currentAccount?.hasMeta ?? true;
+  const accountHasGoogle = currentAccount?.hasGoogle ?? true;
+  const showGoogleCta = accountHasGoogle && (!googleConnected || providerTotals.google === 0);
+  const showMetaEmpty = accountHasMeta && hasAnyData && providerTotals.meta === 0;
 
   return (
     <div className="space-y-6">

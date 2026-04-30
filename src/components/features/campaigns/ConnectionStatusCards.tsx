@@ -14,18 +14,40 @@ import { StatusDot } from '@/components/ui/StatusDot';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
-function formatExpiry(expiresAt: string | null): string {
-  if (!expiresAt) return 'sem expiração conhecida';
+type ExpirySeverity = 'critical' | 'warning' | 'normal' | 'unknown';
+
+interface ExpiryInfo {
+  label: string;
+  severity: ExpirySeverity;
+}
+
+/**
+ * Calcula label humano + severidade pra TTL de token de integração.
+ * - critical: expirado ou < 24h pra expirar (precisa ação imediata)
+ * - warning: < 7d (Meta long-lived = 60d, então 7d é zona de "alertar Safira")
+ * - normal: >= 7d
+ * - unknown: backend não retorna expiresAt
+ */
+function getExpiryInfo(expiresAt: string | null): ExpiryInfo {
+  if (!expiresAt) return { label: 'sem expiração conhecida', severity: 'unknown' };
   const date = new Date(expiresAt);
-  if (Number.isNaN(date.getTime())) return 'desconhecido';
+  if (Number.isNaN(date.getTime())) return { label: 'desconhecido', severity: 'unknown' };
   const diffMs = date.getTime() - Date.now();
-  if (diffMs <= 0) return 'expirado';
+  if (diffMs <= 0) return { label: 'expirado', severity: 'critical' };
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  if (diffMinutes < 60) return `expira em ${diffMinutes}min`;
+  if (diffMinutes < 60) return { label: `expira em ${diffMinutes}min`, severity: 'critical' };
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 48) return `expira em ${diffHours}h`;
+  if (diffHours < 24) return { label: `expira em ${diffHours}h`, severity: 'critical' };
+  if (diffHours < 48) return { label: `expira em ${diffHours}h`, severity: 'warning' };
   const diffDays = Math.floor(diffHours / 24);
-  return `expira em ${diffDays}d`;
+  if (diffDays < 7) return { label: `expira em ${diffDays}d`, severity: 'warning' };
+  return { label: `expira em ${diffDays}d`, severity: 'normal' };
+}
+
+function expiryClassName(severity: ExpirySeverity): string {
+  if (severity === 'critical') return 'text-danger font-medium';
+  if (severity === 'warning') return 'text-warning font-medium';
+  return 'text-ink-muted';
 }
 
 export function ConnectionStatusCards() {
@@ -65,6 +87,8 @@ export function ConnectionStatusCards() {
 
   const googleConnected = !!googleStatus?.connected;
   const metaConnected = !!metaStatus?.connected;
+  const googleExpiry = getExpiryInfo(googleStatus?.expiresAt ?? null);
+  const metaExpiry = getExpiryInfo(metaStatus?.expiresAt ?? null);
 
   return (
     <section aria-label="Status das integrações" className="space-y-3">
@@ -89,18 +113,30 @@ export function ConnectionStatusCards() {
                   </span>
                 )}
               </p>
-              <p className="truncate text-xs text-ink-muted">
-                {metaLoading
-                  ? 'Verificando...'
-                  : metaConnected
-                    ? formatExpiry(metaStatus?.expiresAt ?? null)
-                    : 'Não conectado · fale com a Safira pra provisionar'}
+              <p className="truncate text-xs">
+                <span className={metaConnected ? expiryClassName(metaExpiry.severity) : 'text-ink-muted'}>
+                  {metaLoading
+                    ? 'Verificando...'
+                    : metaConnected
+                      ? metaExpiry.label
+                      : 'Não conectado · fale com a Safira pra provisionar'}
+                </span>
                 {metaStatus?.adAccountId && (
                   <span className="ml-2 font-mono text-[11px] text-ink-subtle">
                     {metaStatus.adAccountId}
                   </span>
                 )}
               </p>
+              {metaConnected && metaExpiry.severity === 'warning' && (
+                <p className="mt-0.5 truncate text-[11px] text-warning">
+                  ⚠ Token Meta vence em breve — Safira vai renovar antes do prazo.
+                </p>
+              )}
+              {metaConnected && metaExpiry.severity === 'critical' && (
+                <p className="mt-0.5 truncate text-[11px] text-danger">
+                  ⚠ Token Meta {metaExpiry.label === 'expirado' ? 'expirou' : 'expira em horas'} — fale com a Safira pra renovar.
+                </p>
+              )}
               {metaStatus?.lastError && (
                 <p className="mt-0.5 truncate text-[11px] text-warning">
                   ⚠ {metaStatus.lastError}
@@ -129,12 +165,14 @@ export function ConnectionStatusCards() {
                   </span>
                 )}
               </p>
-              <p className="truncate text-xs text-ink-muted">
-                {isLoading
-                  ? 'Verificando...'
-                  : googleConnected
-                    ? formatExpiry(googleStatus?.expiresAt ?? null)
-                    : 'Não conectado'}
+              <p className="truncate text-xs">
+                <span className={googleConnected ? expiryClassName(googleExpiry.severity) : 'text-ink-muted'}>
+                  {isLoading
+                    ? 'Verificando...'
+                    : googleConnected
+                      ? googleExpiry.label
+                      : 'Não conectado'}
+                </span>
                 {googleStatus?.customerId && (
                   <span className="ml-2 font-mono text-[11px] text-ink-subtle">
                     {googleStatus.customerId}

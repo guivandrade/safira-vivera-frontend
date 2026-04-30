@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -13,11 +14,13 @@ import {
   useResetOwnerPassword,
   useUpdateAccount,
 } from '@/hooks/use-admin-accounts';
+import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/providers/toast-provider';
 import { STATUS_LABELS } from '@/lib/admin-labels';
 import { getErrorMessage } from '@/lib/errors';
 import axios from 'axios';
 import type { AccountStatus, NicheType } from '@/types/auth-me';
+import type { GoogleAdsStatus } from '@/types/api';
 
 export default function ClienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -33,6 +36,24 @@ export default function ClienteDetalhePage() {
   const [newPwd, setNewPwd] = useState('');
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [googleCustomerInput, setGoogleCustomerInput] = useState('');
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+
+  // Status Google Ads SCOPED pro account sendo editado (não pro account
+  // do staff). Header `x-account-id` instrui o AccountScopedGuard do
+  // backend a resolver pra esse account específico.
+  const googleStatus = useQuery<GoogleAdsStatus>({
+    queryKey: ['admin-google-status', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<GoogleAdsStatus>(
+        '/integrations/google-ads/status',
+        { headers: id ? { 'x-account-id': id } : undefined },
+      );
+      return data;
+    },
+    enabled: !!id,
+    staleTime: 30 * 1000,
+  });
 
   if (isLoading) {
     return (
@@ -107,6 +128,29 @@ export default function ClienteDetalhePage() {
       toast.error(getErrorMessage(err, 'Erro desconhecido'), {
         title: 'Não foi possível arquivar',
       });
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    const sanitized = googleCustomerInput.replace(/-/g, '').trim();
+    if (!/^\d{10}$/.test(sanitized)) {
+      toast.error('Customer ID Google Ads deve ter 10 dígitos (com ou sem hífens)');
+      return;
+    }
+    setConnectingGoogle(true);
+    try {
+      const { data } = await apiClient.get<{ authUrl: string }>(
+        '/integrations/google-ads/oauth/authorize',
+        {
+          headers: { 'x-account-id': id },
+          params: { targetCustomerId: sanitized },
+        },
+      );
+      if (!data?.authUrl) throw new Error('Resposta inválida do servidor: authUrl ausente.');
+      window.location.href = data.authUrl;
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao conectar Google Ads'));
+      setConnectingGoogle(false);
     }
   };
 
@@ -271,6 +315,61 @@ export default function ClienteDetalhePage() {
           </div>
         </div>
       </Card>
+
+      {data.hasGoogle && (
+        <Card>
+          <CardHeader
+            title="Google Ads"
+            description="Vincule a conta Google Ads do cliente. O staff Safira faz o OAuth com a conta Google que tem acesso admin a esta conta — o customer_id abaixo determina qual cliente entre os acessíveis vai ser persistido."
+          />
+          {googleStatus.data?.connected ? (
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-ink-subtle">Conectado: </span>
+                <span className="text-ink">{googleStatus.data.customerName ?? 'sim'}</span>
+              </div>
+              {googleStatus.data.customerId && (
+                <div>
+                  <span className="text-ink-subtle">Customer ID: </span>
+                  <span className="font-mono text-ink">{googleStatus.data.customerId}</span>
+                </div>
+              )}
+              {googleStatus.data.lastError && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+                  Último erro: {googleStatus.data.lastError}
+                </div>
+              )}
+              <p className="text-xs text-ink-muted">
+                Pra trocar a vinculação, conecte de novo informando outro Customer ID.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-ink-muted">
+              Não conectado. Informe o Customer ID Google Ads deste cliente e conecte.
+            </p>
+          )}
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="Customer ID Google Ads">
+              <input
+                type="text"
+                placeholder="123-456-7890 ou 1234567890"
+                value={googleCustomerInput}
+                onChange={(e) => setGoogleCustomerInput(e.target.value)}
+                className={inputClass}
+                inputMode="numeric"
+              />
+            </Field>
+            <Button
+              variant="primary"
+              type="button"
+              onClick={handleConnectGoogle}
+              disabled={connectingGoogle || !googleCustomerInput.trim()}
+            >
+              {connectingGoogle ? 'Conectando...' : 'Conectar Google Ads'}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <CardHeader title="Zona perigosa" />
