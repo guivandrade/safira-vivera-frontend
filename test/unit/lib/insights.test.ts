@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateInsights } from '@/lib/insights';
+import { generateInsights, hasPreviousPeriodError } from '@/lib/insights';
 import type {
   CampaignInsightsResponse,
   CampaignSummary,
@@ -329,6 +329,52 @@ describe('detectRecentZeroConversions (via generateInsights)', () => {
     const monthly = [makeMonth('2026-03', 500, 1)];
     const result = generateInsights(makeResponse([], monthly));
     expect(result.some((r) => r.id === 'recent-zero-conv')).toBe(false);
+  });
+});
+
+describe('hasPreviousPeriodError', () => {
+  it('retorna false quando errors é undefined', () => {
+    expect(hasPreviousPeriodError(undefined)).toBe(false);
+  });
+
+  it('retorna false quando errors está vazio', () => {
+    expect(hasPreviousPeriodError([])).toBe(false);
+  });
+
+  it('retorna true quando alguma entry contém "previousPeriod" (camelCase)', () => {
+    expect(hasPreviousPeriodError(['previousPeriod failed to fetch'])).toBe(true);
+  });
+
+  it('retorna true quando entry usa "previous_period" (snake_case)', () => {
+    expect(hasPreviousPeriodError(['previous_period: timeout'])).toBe(true);
+  });
+
+  it('retorna true quando entry usa "previous period" (com espaço)', () => {
+    expect(hasPreviousPeriodError(['Failed to fetch previous period data'])).toBe(true);
+  });
+
+  it('retorna true quando entry usa "período anterior" (português)', () => {
+    expect(hasPreviousPeriodError(['Falha ao buscar dados do período anterior'])).toBe(true);
+  });
+
+  it('case insensitive', () => {
+    expect(hasPreviousPeriodError(['PREVIOUSPERIOD ERROR'])).toBe(true);
+    expect(hasPreviousPeriodError(['Período Anterior indisponível'])).toBe(true);
+  });
+
+  it('retorna false quando errors não menciona previousPeriod', () => {
+    expect(hasPreviousPeriodError(['Meta Ads token expired'])).toBe(false);
+    expect(hasPreviousPeriodError(['Google Ads rate limited', 'Network timeout'])).toBe(false);
+  });
+
+  it('detecta entry específica em meio a outras', () => {
+    expect(
+      hasPreviousPeriodError([
+        'Meta Ads token expired',
+        'previousPeriod fetch timeout',
+        'Network ok',
+      ]),
+    ).toBe(true);
   });
 });
 

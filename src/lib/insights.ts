@@ -238,3 +238,17 @@ function detectRecentZeroConversions(monthly: MonthlyData[]): Insight[] {
 function truncate(s: string, max = 40): string {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
+
+/**
+ * Detecta se o backend reportou falha em buscar o `previousPeriod` da resposta
+ * de insights. Usado pra desligar o cálculo de delta% e evitar mostrar
+ * "+Infinity%" quando o provider falhou no período anterior e o backend
+ * silenciava com zeros.
+ *
+ * Backend (auditoria PRs #48-#51) passa a incluir esse erro em `errors[]`.
+ * Aceita variantes em PT/EN para resiliência a futuras mudanças de copy.
+ */
+export function hasPreviousPeriodError(errors: string[] | undefined): boolean {
+  if (!errors || errors.length === 0) return false;
+  return errors.some((msg) => /previous.?period|período anterior/i.test(msg));
+}

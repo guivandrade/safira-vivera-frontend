@@ -28,6 +28,7 @@ import {
   percentDelta,
   safeDiv,
 } from '@/lib/formatters';
+import { hasPreviousPeriodError } from '@/lib/insights';
 import { useFiltersStore } from '@/stores/filters-store';
 import { useKpiPrefs } from '@/hooks/use-kpi-prefs';
 import { useCan } from '@/providers/auth-provider';
@@ -115,8 +116,18 @@ export function KpiCards({ data, platformFilter = 'all' }: KpiCardsProps) {
     let clicksDelta: number | null = null;
     let impressionsDelta: number | null = null;
 
-    if (data.previousPeriod && platformFilter === 'all') {
-      const prev = data.previousPeriod;
+    // Quando o backend falha em buscar dados do período anterior (tipicamente
+    // janela de comparação que excede o histórico do provider), antes silenciava
+    // com zeros — o que produzia delta +Inf% (atual > 0, prev = 0). Com a
+    // auditoria do backend (PRs backend #48-#51), o erro vem em `errors[]` da
+    // resposta. `hasPreviousPeriodError` detecta e desligamos a comparação.
+    // UI mostra delta = null → DeltaIndicator renderiza "—" (não disponível).
+    const usablePreviousPeriod = hasPreviousPeriodError(data.errors)
+      ? undefined
+      : data.previousPeriod;
+
+    if (usablePreviousPeriod && platformFilter === 'all') {
+      const prev = usablePreviousPeriod;
       spendDelta = percentDelta(totalSpend, prev.totalSpend);
       convDelta = percentDelta(totalConversions, prev.totalConversions);
       const prevCpa = safeDiv(prev.totalSpend, prev.totalConversions);
