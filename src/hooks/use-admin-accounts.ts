@@ -9,6 +9,7 @@ import type {
   CreateAccountInput,
   ImpersonateResponse,
   UpdateAccountInput,
+  UpdateOwnerInput,
 } from '@/types/admin';
 
 const KEY_LIST = ['admin-accounts'] as const;
@@ -80,6 +81,23 @@ export function useResetOwnerPassword(id: string) {
   return useMutation({
     mutationFn: async (newPassword: string) => {
       await apiClient.post(`/admin/accounts/${id}/reset-owner-password`, { newPassword });
+    },
+  });
+}
+
+export function useUpdateOwner(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateOwnerInput) => {
+      const { data } = await apiClient.patch<AdminAccount>(
+        `/admin/accounts/${id}/owner`,
+        input,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: KEY_LIST });
+      queryClient.invalidateQueries({ queryKey: KEY_ONE(id) });
     },
   });
 }

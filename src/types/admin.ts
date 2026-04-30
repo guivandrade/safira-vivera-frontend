@@ -32,6 +32,11 @@ export interface UpdateAccountInput {
   hasGoogle?: boolean;
 }
 
+export interface UpdateOwnerInput {
+  name?: string;
+  email?: string;
+}
+
 export interface ImpersonateResponse {
   access_token: string;
   refresh_token: string;
