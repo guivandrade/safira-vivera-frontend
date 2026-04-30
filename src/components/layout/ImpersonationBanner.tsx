@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { clearTenantState } from '@/lib/clear-tenant-state';
 import { useAuth } from '@/providers/auth-provider';
 
 /**
@@ -31,13 +32,15 @@ export function ImpersonationBanner() {
         refresh_token: string;
       }>('/auth/exit-impersonation');
 
+      // Limpa cache do account impersonado + stores não-particionadas, ANTES
+      // de gravar os tokens novos. `clearTenantState` faz `queryClient.clear()`
+      // — remove dados (não só marca stale como `invalidate`), evitando que a
+      // próxima rota mostre dados do tenant anterior enquanto o refetch chega.
+      clearTenantState(queryClient);
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
       localStorage.removeItem(STORAGE_KEYS.IMPERSONATED_ACCOUNT);
 
-      // Invalida todas as queries — próxima rota vai refetchar com o JWT novo
-      // (sem currentAccountId, pra staff).
-      await queryClient.invalidateQueries();
       router.replace('/admin/clientes');
     } catch {
       // Fallback: se o endpoint falhar por qualquer motivo, limpa tudo e manda
@@ -45,7 +48,7 @@ export function ImpersonationBanner() {
       localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.IMPERSONATED_ACCOUNT);
-      queryClient.clear();
+      clearTenantState(queryClient);
       router.replace('/login?returnUrl=%2Fadmin%2Fclientes');
     } finally {
       setIsExiting(false);

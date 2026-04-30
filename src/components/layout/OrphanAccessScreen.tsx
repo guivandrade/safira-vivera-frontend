@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearAuthAndTenantState } from '@/lib/clear-tenant-state';
 
 /**
  * Tela mostrada quando o user autenticado não tem nenhum account ativo
@@ -13,11 +14,10 @@ import { STORAGE_KEYS } from '@/lib/storage-keys';
  */
 export function OrphanAccessScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.USER);
+    clearAuthAndTenantState(queryClient);
     router.push('/login');
   };
 

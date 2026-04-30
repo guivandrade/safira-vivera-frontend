@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/cn';
 import { apiClient } from '@/lib/api-client';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { getErrorMessage } from '@/lib/errors';
+import { clearAuthAndTenantState } from '@/lib/clear-tenant-state';
 import { useToast } from '@/providers/toast-provider';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -28,15 +30,10 @@ function getInitials(user: StoredUser | null): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
-function clearAuthStorage() {
-  localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.USER);
-}
-
 export function UserMenu() {
   const router = useRouter();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<StoredUser | null>(null);
   const [open, setOpen] = useState(false);
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
@@ -64,7 +61,7 @@ export function UserMenu() {
   }, [open]);
 
   const handleLogout = () => {
-    clearAuthStorage();
+    clearAuthAndTenantState(queryClient);
     router.push('/login');
   };
 
@@ -80,7 +77,7 @@ export function UserMenu() {
       // o que usamos aqui). Não precisamos esperar erro posterior — já
       // limpamos storage e redirecionamos imediatamente após o 200.
       await apiClient.post('/auth/logout-all');
-      clearAuthStorage();
+      clearAuthAndTenantState(queryClient);
       toast.success('Você foi desconectado de todos os dispositivos.');
       router.push('/login');
     } catch (err: unknown) {
